@@ -1,0 +1,23 @@
+# Apex Wealth Advisor - Python Dependencies
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Authentication
+PyJWT==2.8.0
+cryptography==41.0.7
+requests==2.31.0
+
+# Okta AI SDK (for XAA/ID-JAG)
+okta-ai-sdk-proto>=1.0.0a6
+
+# Claude AI
+anthropic>=0.18.0
+
+# Environment
+python-dotenv==1.0.0
+
+# HTTP Client
+httpx==0.26.0

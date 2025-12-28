@@ -1,0 +1,64 @@
+# Render Blueprint for Apex Wealth Advisor
+# Deploy both backend services from this repo
+
+services:
+  # Main Backend API (Claude + Orchestration)
+  - type: web
+    name: apex-wealth-api
+    env: python
+    region: virginia
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OKTA_DOMAIN
+        sync: false
+      - key: OKTA_CLIENT_ID
+        sync: false
+      - key: OKTA_CLIENT_SECRET
+        sync: false
+      - key: OKTA_AGENT_ID
+        sync: false
+      - key: OKTA_AGENT_PRIVATE_KEY
+        sync: false
+      - key: OKTA_AUTH_SERVER_ID
+        sync: false
+      - key: OKTA_MCP_AUDIENCE
+        sync: false
+      - key: AUTH0_DOMAIN
+        sync: false
+      - key: AUTH0_CLIENT_ID
+        sync: false
+      - key: AUTH0_CLIENT_SECRET
+        sync: false
+      - key: AUTH0_VAULT_AUDIENCE
+        sync: false
+      - key: FRONTEND_URL
+        value: https://apex-wealth-app.vercel.app
+
+  # MCP Server (can be same service or separate)
+  - type: web
+    name: apex-wealth-mcp
+    env: python
+    region: virginia
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn mcp_server.mcp_api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: OKTA_DOMAIN
+        sync: false
+      - key: OKTA_AUTH_SERVER_ID
+        sync: false
+      - key: OKTA_MCP_AUDIENCE
+        sync: false
+      - key: OKTA_AGENT_ID
+        sync: false
+      - key: OKTA_AGENT_PRIVATE_KEY
+        sync: false
