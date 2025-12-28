@@ -1,6 +1,7 @@
 """
 Claude AI Service
-Handles conversation with Claude API including tool calling
+Handles conversation with Claude API including tool calling.
+Routes tools to appropriate security flow (Okta XAA vs Auth0 Token Vault).
 """
 
 import logging
@@ -11,11 +12,19 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
+# Define which tools use which security flow
+MCP_TOOLS = ["get_client", "list_clients", "get_portfolio", "process_payment", "update_client"]
+CALENDAR_TOOLS = ["list_calendar_events", "get_calendar_event", "create_calendar_event", "check_availability", "cancel_calendar_event"]
+# Phase 2: SALESFORCE_TOOLS = ["get_contact", "get_account", "get_opportunity", "create_task"]
+
 
 class ClaudeService:
     """
-    Service for interacting with Claude API
-    Supports tool calling for MCP integration
+    Service for interacting with Claude API.
+    Routes tool calls to appropriate backend:
+    - Internal MCP tools: Okta XAA (ID-JAG token exchange)
+    - Calendar tools: Auth0 Token Vault (Google Calendar)
+    - Salesforce tools: Auth0 Token Vault (Phase 2)
     """
     
     def __init__(self):
@@ -28,34 +37,62 @@ class ClaudeService:
         
         self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
         
-        self.system_prompt = """You are an AI assistant for Apex Wealth Advisor, a premium wealth management platform.
+        self.system_prompt = """You are Buffett, an AI assistant for Apex Wealth Advisor, a premium wealth management platform.
 
-Your role is to help financial advisors manage client portfolios, process transactions, and access client information.
+Your role is to help financial advisors manage client portfolios, process transactions, schedule meetings, and access client information.
 
-You have access to the following tools:
+## Available Tools
+
+### Internal Portfolio System (Okta XAA)
+These tools access the internal portfolio management system via Okta Cross-App Access:
 - get_client: Look up client information by name or ID
-- list_clients: List all active clients
-- get_portfolio: Get detailed portfolio information for a client
-- process_payment: Process payment transactions (may require step-up auth for high values)
+- list_clients: List all active clients  
+- get_portfolio: Get detailed portfolio holdings and performance
+- process_payment: Process payment transactions
 - update_client: Update client contact information
 
-Security behaviors to demonstrate:
-1. FGA (Fine-Grained Authorization): Client "Charlie Brown" has a compliance hold - access will be denied
-2. CIBA Step-Up: Payments over $10,000 require step-up authentication
-3. Risk Policy: Payments to unverified recipients like "Offshore Holdings LLC" are blocked
-4. XAA Token Flow: All tool access is secured via Okta Cross-App Access tokens
+### Google Calendar (Auth0 Token Vault)
+These tools access Google Calendar via Auth0 Token Vault:
+- list_calendar_events: Show upcoming meetings
+- create_calendar_event: Schedule new meetings with clients
+- check_availability: Check if a time slot is free
+- cancel_calendar_event: Cancel a meeting
 
-Be helpful, professional, and always prioritize security. When security controls block an action, explain why clearly."""
+## Security Behaviors
+
+1. **Okta XAA (Cross-App Access)**: All internal portfolio tools use ID-JAG token exchange for secure access
+2. **Auth0 Token Vault**: Calendar tools use Token Vault to retrieve Google credentials securely
+3. **CIBA Step-Up**: Payments over $10,000 require step-up authentication (push notification)
+4. **Risk Policy**: Payments to unverified recipients (e.g., "Offshore Holdings LLC") are blocked
+
+## Response Style
+- Be helpful and professional
+- Explain security controls clearly when they apply
+- Proactively offer to schedule follow-up meetings after client discussions
+- Use the client's name naturally in conversation
+
+When security controls block an action, explain why clearly and suggest alternatives."""
     
-    def _convert_mcp_tools_to_claude(self, mcp_tools: List[Dict]) -> List[Dict]:
-        """Convert MCP tool definitions to Claude tool format"""
+    def _convert_tools_to_claude(self, mcp_tools: List[Dict], calendar_tools: List[Dict]) -> List[Dict]:
+        """Convert tool definitions to Claude tool format"""
         claude_tools = []
+        
+        # Add MCP tools
         for tool in mcp_tools:
             claude_tools.append({
                 "name": tool["name"],
-                "description": tool["description"],
+                "description": tool["description"] + " [Security: Okta XAA]",
                 "input_schema": tool["parameters"]
             })
+        
+        # Add Calendar tools
+        for tool in calendar_tools:
+            claude_tools.append({
+                "name": tool["name"],
+                "description": tool["description"] + " [Security: Auth0 Token Vault]",
+                "input_schema": tool["parameters"]
+            })
+        
         return claude_tools
     
     async def process_message(
@@ -65,18 +102,21 @@ Be helpful, professional, and always prioritize security. When security controls
         user_info: Optional[Dict[str, Any]] = None,
         mcp_token: Optional[str] = None,
         mcp_server = None,
-        token_vault = None
+        calendar_tools = None,
+        google_token: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process a message through Claude with tool access.
+        Routes tools to appropriate security flow.
         
         Args:
             message: User's message
             conversation_history: Previous messages
             user_info: Authenticated user information
-            mcp_token: MCP access token from XAA
-            mcp_server: MCP server instance for tool calls
-            token_vault: Token vault client for external APIs
+            mcp_token: MCP access token from Okta XAA
+            mcp_server: MCP server instance for internal tools
+            calendar_tools: Google Calendar tools instance
+            google_token: Google token from Auth0 Token Vault
         """
         if not self.client:
             return {
@@ -87,30 +127,39 @@ Be helpful, professional, and always prioritize security. When security controls
         try:
             # Build messages
             messages = []
-            for msg in conversation_history[-10:]:  # Last 10 messages for context
+            for msg in conversation_history[-10:]:
                 messages.append({
                     "role": msg.get("role", "user"),
                     "content": msg.get("content", "")
                 })
             messages.append({"role": "user", "content": message})
             
-            # Get tools from MCP server
-            tools = []
+            # Gather all tools
+            all_tools = []
+            mcp_tool_list = []
+            calendar_tool_list = []
+            
             if mcp_server:
-                mcp_tools = mcp_server.list_tools()
-                tools = self._convert_mcp_tools_to_claude(mcp_tools)
+                mcp_tool_list = mcp_server.list_tools()
+            
+            if calendar_tools:
+                calendar_tool_list = calendar_tools.list_tools()
+            
+            all_tools = self._convert_tools_to_claude(mcp_tool_list, calendar_tool_list)
             
             # Initial Claude call
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=1024,
+                max_tokens=2048,
                 system=self.system_prompt,
                 messages=messages,
-                tools=tools if tools else None
+                tools=all_tools if all_tools else None
             )
             
             # Handle tool calls
             tools_called = []
+            xaa_tools_called = []
+            vault_tools_called = []
             tool_results = []
             
             while response.stop_reason == "tool_use":
@@ -121,22 +170,42 @@ Be helpful, professional, and always prioritize security. When security controls
                         tool_input = content_block.input
                         tool_use_id = content_block.id
                         
-                        logger.info(f"[Claude] Calling tool: {tool_name}")
+                        logger.info(f"[Claude] Tool call: {tool_name}")
                         tools_called.append(tool_name)
                         
-                        # Execute tool through MCP server
-                        if mcp_server:
-                            tool_user_info = user_info or {}
-                            if mcp_token:
-                                tool_user_info["mcp_token"] = mcp_token
-                            
-                            result = await mcp_server.call_tool(
-                                tool_name,
-                                tool_input,
-                                tool_user_info
-                            )
+                        # Route to appropriate handler based on tool type
+                        if tool_name in MCP_TOOLS:
+                            # Internal MCP tool - use Okta XAA
+                            xaa_tools_called.append(tool_name)
+                            if mcp_server:
+                                tool_user_info = user_info or {}
+                                if mcp_token:
+                                    tool_user_info["mcp_token"] = mcp_token
+                                
+                                result = await mcp_server.call_tool(
+                                    tool_name,
+                                    tool_input,
+                                    tool_user_info
+                                )
+                                result["security_flow"] = "Okta XAA (ID-JAG)"
+                            else:
+                                result = {"error": "MCP server not available"}
+                        
+                        elif tool_name in CALENDAR_TOOLS:
+                            # Calendar tool - use Auth0 Token Vault
+                            vault_tools_called.append(tool_name)
+                            if calendar_tools:
+                                result = await calendar_tools.call_tool(
+                                    tool_name,
+                                    tool_input,
+                                    google_token
+                                )
+                                result["security_flow"] = "Auth0 Token Vault"
+                            else:
+                                result = {"error": "Calendar tools not available"}
+                        
                         else:
-                            result = {"error": "MCP server not available"}
+                            result = {"error": f"Unknown tool: {tool_name}"}
                         
                         tool_results.append({
                             "type": "tool_result",
@@ -150,10 +219,10 @@ Be helpful, professional, and always prioritize security. When security controls
                 
                 response = self.client.messages.create(
                     model=self.model,
-                    max_tokens=1024,
+                    max_tokens=2048,
                     system=self.system_prompt,
                     messages=messages,
-                    tools=tools if tools else None
+                    tools=all_tools if all_tools else None
                 )
                 
                 tool_results = []
@@ -166,11 +235,13 @@ Be helpful, professional, and always prioritize security. When security controls
             
             return {
                 "content": final_content,
-                "agent_type": "Wealth Advisor (Buffett)",
+                "agent_type": "Buffett (Wealth Advisor)",
                 "tools_called": tools_called if tools_called else None,
-                "mcp_info": {
-                    "tools_available": len(tools),
-                    "tools_used": len(tools_called)
+                "security_info": {
+                    "xaa_tools": xaa_tools_called,
+                    "vault_tools": vault_tools_called,
+                    "mcp_token_used": bool(mcp_token and xaa_tools_called),
+                    "google_token_used": bool(google_token and vault_tools_called)
                 } if tools_called else None
             }
             

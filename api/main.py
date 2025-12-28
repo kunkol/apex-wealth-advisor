@@ -1,9 +1,14 @@
 """
 Apex Wealth Advisor - Backend API
-FastAPI backend with Claude AI, Okta XAA, and Auth0 Token Vault integration
+FastAPI backend with Claude AI, Okta XAA, and Auth0 Token Vault integration.
+
+Architecture:
+- Internal MCP (Portfolio): Okta XAA (ID-JAG token exchange)
+- Google Calendar: Auth0 Token Vault
+- Salesforce CRM: Auth0 Token Vault (Phase 2)
 """
 
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -22,6 +27,9 @@ from auth.token_vault import TokenVaultClient
 # Import MCP server
 from mcp_server.wealth_mcp import WealthMCP
 
+# Import tools
+from tools.google_calendar import GoogleCalendarTools
+
 # Import Claude service
 from services.claude_service import ClaudeService
 
@@ -39,26 +47,56 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# CORS - Allow frontend origins
+frontend_origins = [
+    os.getenv("FRONTEND_URL", "http://localhost:3000"),
+    "https://apex-wealth-app.vercel.app",
+    "https://okta-ai-agent-demo.vercel.app"
+]
+# Add any additional origins from env
+extra_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+frontend_origins.extend([o.strip() for o in extra_origins if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("FRONTEND_URL", "http://localhost:3000"),
-        "https://apex-wealth-app.vercel.app"
-    ],
+    allow_origins=frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize services
-xaa_manager = OktaCrossAppAccessManager()
-token_validator = TokenValidator()
-token_vault = TokenVaultClient()
-wealth_mcp = WealthMCP()
-claude_service = ClaudeService()
+# ============================================================================
+# INITIALIZE SERVICES
+# ============================================================================
 
-# Pydantic models
+# Okta XAA Manager - for Internal MCP access
+xaa_manager = OktaCrossAppAccessManager()
+logger.info(f"[INIT] Okta XAA configured: {xaa_manager.is_configured()}")
+
+# Token Validator - for ID token validation
+token_validator = TokenValidator()
+
+# Auth0 Token Vault - for external APIs (Google, Salesforce)
+token_vault = TokenVaultClient()
+logger.info(f"[INIT] Auth0 Token Vault configured: {token_vault.is_configured()}")
+
+# Internal MCP Server - Portfolio data
+wealth_mcp = WealthMCP()
+logger.info(f"[INIT] Internal MCP server initialized with {len(wealth_mcp.list_tools())} tools")
+
+# Google Calendar Tools - uses Token Vault
+calendar_tools = GoogleCalendarTools(token_vault_client=token_vault)
+logger.info(f"[INIT] Google Calendar tools initialized with {len(calendar_tools.list_tools())} tools")
+
+# Claude AI Service
+claude_service = ClaudeService()
+logger.info(f"[INIT] Claude service initialized")
+
+
+# ============================================================================
+# PYDANTIC MODELS
+# ============================================================================
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -71,16 +109,26 @@ class ChatResponse(BaseModel):
     content: str
     agent_type: str
     tools_called: Optional[List[str]] = None
-    mcp_info: Optional[Dict[str, Any]] = None
-    token_info: Optional[Dict[str, Any]] = None
+    security_info: Optional[Dict[str, Any]] = None
+    xaa_info: Optional[Dict[str, Any]] = None
+    token_vault_info: Optional[Dict[str, Any]] = None
 
+
+# ============================================================================
+# ENDPOINTS
+# ============================================================================
 
 @app.get("/")
 async def root():
     return {
         "service": "Apex Wealth Advisor API",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "security_flows": {
+            "internal_mcp": "Okta XAA (ID-JAG)",
+            "google_calendar": "Auth0 Token Vault",
+            "salesforce": "Auth0 Token Vault (Phase 2)"
+        }
     }
 
 
@@ -90,9 +138,11 @@ async def health():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "services": {
-            "xaa": xaa_manager.is_configured(),
-            "token_vault": token_vault.is_configured(),
-            "mcp": True
+            "okta_xaa": xaa_manager.is_configured(),
+            "auth0_token_vault": token_vault.is_configured(),
+            "internal_mcp": True,
+            "google_calendar": True,
+            "claude": claude_service.client is not None
         }
     }
 
@@ -100,53 +150,88 @@ async def health():
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, http_request: Request):
     """
-    Main chat endpoint - processes messages through Claude with tool access
+    Main chat endpoint - processes messages through Claude with tool access.
+    
+    Security Flow:
+    1. Validate user's ID token
+    2. Exchange ID token for MCP token (Okta XAA) for internal tools
+    3. Exchange for Auth0 vault token, then get Google token (Token Vault) for calendar
+    4. Route tool calls to appropriate backend
     """
     try:
         # Extract tokens from headers
         id_token = http_request.headers.get("X-ID-Token")
         access_token = http_request.headers.get("Authorization", "").replace("Bearer ", "")
         
-        logger.info(f"[CHAT] Received request: {len(request.messages)} messages")
-        logger.debug(f"[CHAT] Has ID token: {bool(id_token)}, Has access token: {bool(access_token)}")
+        logger.info(f"[CHAT] Request received: {len(request.messages)} messages")
         
-        # Validate user if token provided
+        # ================================================================
+        # STEP 1: Validate user
+        # ================================================================
         user_info = None
         if id_token:
             user_info = await token_validator.validate_token(id_token)
             if user_info:
                 logger.info(f"[CHAT] User validated: {user_info.get('email')}")
         
-        # Exchange for MCP token if ID token provided
+        # ================================================================
+        # STEP 2: Okta XAA - Get MCP token for internal tools
+        # ================================================================
         mcp_token_info = None
         if id_token and xaa_manager.is_configured():
             mcp_token_info = await xaa_manager.exchange_id_to_mcp_token(id_token)
             if mcp_token_info:
-                logger.info(f"[CHAT] MCP token obtained, expires in {mcp_token_info.get('expires_in')}s")
+                logger.info(f"[CHAT] XAA: MCP token obtained, expires_in={mcp_token_info.get('expires_in')}s")
         
-        # Get last message
+        # ================================================================
+        # STEP 3: Auth0 Token Vault - Get Google token for calendar
+        # ================================================================
+        google_token_info = None
+        if access_token and token_vault.is_configured():
+            # First exchange Okta token for Auth0 vault token
+            vault_token = await token_vault.exchange_okta_token(access_token)
+            if vault_token:
+                # Then get Google token from vault
+                google_token_info = await token_vault.get_google_token(vault_token)
+                if google_token_info:
+                    logger.info(f"[CHAT] Token Vault: Google token obtained")
+        
+        # ================================================================
+        # STEP 4: Process through Claude with tools
+        # ================================================================
         last_message = request.messages[-1].content if request.messages else ""
         
-        # Process through Claude with tools
         response = await claude_service.process_message(
             message=last_message,
             conversation_history=[m.dict() for m in request.messages[:-1]],
             user_info=user_info,
             mcp_token=mcp_token_info.get("access_token") if mcp_token_info else None,
             mcp_server=wealth_mcp,
-            token_vault=token_vault
+            calendar_tools=calendar_tools,
+            google_token=google_token_info.get("access_token") if google_token_info else None
         )
         
+        # ================================================================
+        # Build response with security info
+        # ================================================================
         return ChatResponse(
             content=response["content"],
-            agent_type=response.get("agent_type", "Wealth Advisor"),
+            agent_type=response.get("agent_type", "Buffett"),
             tools_called=response.get("tools_called"),
-            mcp_info=response.get("mcp_info"),
-            token_info={
-                "has_id_token": bool(id_token),
-                "has_mcp_token": bool(mcp_token_info),
-                "mcp_expires_in": mcp_token_info.get("expires_in") if mcp_token_info else None
-            }
+            security_info=response.get("security_info"),
+            xaa_info={
+                "configured": xaa_manager.is_configured(),
+                "token_obtained": bool(mcp_token_info),
+                "id_jag_token": mcp_token_info.get("id_jag_token", "")[:50] + "..." if mcp_token_info else None,
+                "mcp_access_token": mcp_token_info.get("access_token", "")[:50] + "..." if mcp_token_info else None,
+                "expires_in": mcp_token_info.get("expires_in") if mcp_token_info else None,
+                "scope": mcp_token_info.get("scope") if mcp_token_info else None
+            } if mcp_token_info or xaa_manager.is_configured() else None,
+            token_vault_info={
+                "configured": token_vault.is_configured(),
+                "google_token_obtained": bool(google_token_info),
+                "connection": "google-oauth2"
+            } if google_token_info or token_vault.is_configured() else None
         )
         
     except Exception as e:
@@ -156,46 +241,65 @@ async def chat(request: ChatRequest, http_request: Request):
 
 @app.get("/api/tools")
 async def list_tools():
-    """List available MCP tools"""
+    """List all available tools across all backends"""
+    mcp_tools = wealth_mcp.list_tools()
+    cal_tools = calendar_tools.list_tools()
+    
     return {
-        "tools": wealth_mcp.list_tools(),
-        "count": len(wealth_mcp.list_tools())
+        "internal_mcp": {
+            "security": "Okta XAA (ID-JAG)",
+            "tools": mcp_tools,
+            "count": len(mcp_tools)
+        },
+        "google_calendar": {
+            "security": "Auth0 Token Vault",
+            "tools": cal_tools,
+            "count": len(cal_tools)
+        },
+        "total_tools": len(mcp_tools) + len(cal_tools)
     }
 
 
 @app.post("/api/tools/call")
 async def call_tool(request: Dict[str, Any], http_request: Request):
-    """Call an MCP tool directly"""
+    """Call a tool directly (for testing)"""
     tool_name = request.get("tool_name")
     arguments = request.get("arguments", {})
     
-    # Get MCP token from header
-    auth_header = http_request.headers.get("Authorization", "")
-    mcp_token = auth_header.replace("Bearer ", "") if auth_header else None
+    # Determine which backend handles this tool
+    mcp_tool_names = [t["name"] for t in wealth_mcp.list_tools()]
+    cal_tool_names = [t["name"] for t in calendar_tools.list_tools()]
     
-    user_info = {"mcp_token": mcp_token} if mcp_token else {}
+    if tool_name in mcp_tool_names:
+        result = await wealth_mcp.call_tool(tool_name, arguments, {})
+        result["backend"] = "Internal MCP"
+        result["security"] = "Okta XAA"
+    elif tool_name in cal_tool_names:
+        result = await calendar_tools.call_tool(tool_name, arguments, None)
+        result["backend"] = "Google Calendar"
+        result["security"] = "Auth0 Token Vault"
+    else:
+        result = {"error": "unknown_tool", "message": f"Tool '{tool_name}' not found"}
     
-    result = await wealth_mcp.call_tool(tool_name, arguments, user_info)
     return result
 
 
-@app.get("/api/xaa/status")
-async def xaa_status():
-    """Check XAA configuration status"""
+@app.get("/api/security/status")
+async def security_status():
+    """Check all security configurations"""
     return {
-        "configured": xaa_manager.is_configured(),
-        "okta_domain": os.getenv("OKTA_DOMAIN", "not set"),
-        "auth_server": os.getenv("OKTA_AUTH_SERVER_ID", "not set")
-    }
-
-
-@app.get("/api/token-vault/status")
-async def token_vault_status():
-    """Check Token Vault configuration status"""
-    return {
-        "configured": token_vault.is_configured(),
-        "auth0_domain": os.getenv("AUTH0_DOMAIN", "not set"),
-        "connections": ["salesforce", "google-oauth2"]
+        "okta_xaa": {
+            "configured": xaa_manager.is_configured(),
+            "domain": os.getenv("OKTA_DOMAIN", "not set"),
+            "auth_server": os.getenv("OKTA_MCP_AUTH_SERVER_ID", "not set"),
+            "description": "ID-JAG token exchange for Internal MCP access"
+        },
+        "auth0_token_vault": {
+            "configured": token_vault.is_configured(),
+            "domain": os.getenv("AUTH0_DOMAIN", "not set"),
+            "connections": ["google-oauth2", "salesforce (Phase 2)"],
+            "description": "Secure token storage for external SaaS APIs"
+        }
     }
 
 

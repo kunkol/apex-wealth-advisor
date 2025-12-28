@@ -1,0 +1,441 @@
+"""
+Google Calendar Tools
+Accesses Google Calendar API via Auth0 Token Vault
+"""
+
+import logging
+import os
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+import requests
+
+logger = logging.getLogger(__name__)
+
+
+class GoogleCalendarTools:
+    """
+    Google Calendar integration via Auth0 Token Vault.
+    
+    Security Flow:
+    1. User authenticates with Okta
+    2. Backend exchanges Okta token for Auth0 vault token (CTE)
+    3. Backend retrieves Google token from Token Vault
+    4. Backend calls Google Calendar API with user's Google token
+    """
+    
+    def __init__(self, token_vault_client=None):
+        self.token_vault = token_vault_client
+        self.calendar_api_base = "https://www.googleapis.com/calendar/v3"
+        
+        # Mock data for demo (used when Token Vault not configured)
+        self.mock_events = self._initialize_mock_events()
+    
+    def _initialize_mock_events(self) -> List[Dict[str, Any]]:
+        """Initialize mock calendar data for demo"""
+        today = datetime.now()
+        return [
+            {
+                "id": "evt001",
+                "summary": "Portfolio Review - Marcus Thompson",
+                "description": "Quarterly portfolio review meeting",
+                "start": {"dateTime": (today + timedelta(days=2, hours=10)).isoformat()},
+                "end": {"dateTime": (today + timedelta(days=2, hours=11)).isoformat()},
+                "attendees": [{"email": "marcus.thompson@email.com", "displayName": "Marcus Thompson"}],
+                "status": "confirmed"
+            },
+            {
+                "id": "evt002", 
+                "summary": "Retirement Planning - Elena Rodriguez",
+                "description": "Discuss retirement income strategy",
+                "start": {"dateTime": (today + timedelta(days=3, hours=14)).isoformat()},
+                "end": {"dateTime": (today + timedelta(days=3, hours=15)).isoformat()},
+                "attendees": [{"email": "elena.rodriguez@email.com", "displayName": "Elena Rodriguez"}],
+                "status": "confirmed"
+            },
+            {
+                "id": "evt003",
+                "summary": "Business Succession Planning - James Chen",
+                "description": "Review business succession options",
+                "start": {"dateTime": (today + timedelta(days=5, hours=9)).isoformat()},
+                "end": {"dateTime": (today + timedelta(days=5, hours=10, minutes=30)).isoformat()},
+                "attendees": [{"email": "jchen@chenindustries.com", "displayName": "James Chen"}],
+                "status": "confirmed"
+            },
+            {
+                "id": "evt004",
+                "summary": "Investment Strategy Call - Priya Patel",
+                "description": "Discuss growth portfolio adjustments",
+                "start": {"dateTime": (today + timedelta(days=1, hours=16)).isoformat()},
+                "end": {"dateTime": (today + timedelta(days=1, hours=16, minutes=30)).isoformat()},
+                "attendees": [{"email": "priya.patel@email.com", "displayName": "Priya Patel"}],
+                "status": "confirmed"
+            },
+            {
+                "id": "evt005",
+                "summary": "Team Standup",
+                "description": "Daily team sync",
+                "start": {"dateTime": (today + timedelta(days=1, hours=9)).isoformat()},
+                "end": {"dateTime": (today + timedelta(days=1, hours=9, minutes=30)).isoformat()},
+                "attendees": [],
+                "status": "confirmed"
+            }
+        ]
+    
+    def list_tools(self) -> List[Dict[str, Any]]:
+        """Return tool definitions for Claude"""
+        return [
+            {
+                "name": "list_calendar_events",
+                "description": "List upcoming calendar events. Shows meetings scheduled in the next 7 days by default.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "days_ahead": {
+                            "type": "integer",
+                            "description": "Number of days to look ahead (default: 7)"
+                        },
+                        "search_query": {
+                            "type": "string",
+                            "description": "Optional search query to filter events by title or attendee name"
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "get_calendar_event",
+                "description": "Get details of a specific calendar event by ID",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "event_id": {
+                            "type": "string",
+                            "description": "The calendar event ID"
+                        }
+                    },
+                    "required": ["event_id"]
+                }
+            },
+            {
+                "name": "create_calendar_event",
+                "description": "Schedule a new meeting or event on the calendar",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "Event title/summary"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Event description"
+                        },
+                        "start_time": {
+                            "type": "string",
+                            "description": "Start time in ISO format or natural language (e.g., 'next Tuesday at 2pm')"
+                        },
+                        "duration_minutes": {
+                            "type": "integer",
+                            "description": "Duration in minutes (default: 60)"
+                        },
+                        "attendee_email": {
+                            "type": "string",
+                            "description": "Email of attendee to invite"
+                        },
+                        "attendee_name": {
+                            "type": "string",
+                            "description": "Name of attendee"
+                        }
+                    },
+                    "required": ["title", "start_time"]
+                }
+            },
+            {
+                "name": "check_availability",
+                "description": "Check if a specific time slot is available",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "date": {
+                            "type": "string",
+                            "description": "Date to check (e.g., 'tomorrow', 'Friday', '2025-01-15')"
+                        },
+                        "time": {
+                            "type": "string",
+                            "description": "Time to check (e.g., '2pm', '14:00')"
+                        }
+                    },
+                    "required": ["date"]
+                }
+            },
+            {
+                "name": "cancel_calendar_event",
+                "description": "Cancel/delete a calendar event",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "event_id": {
+                            "type": "string",
+                            "description": "The calendar event ID to cancel"
+                        }
+                    },
+                    "required": ["event_id"]
+                }
+            }
+        ]
+    
+    async def call_tool(self, tool_name: str, args: Dict[str, Any], google_token: Optional[str] = None) -> Dict[str, Any]:
+        """Execute a calendar tool"""
+        
+        # Add Token Vault info to response
+        token_vault_info = {
+            "security_flow": "Auth0 Token Vault",
+            "token_source": "google-oauth2 connection",
+            "token_available": bool(google_token)
+        }
+        
+        tool_handlers = {
+            "list_calendar_events": self._list_events,
+            "get_calendar_event": self._get_event,
+            "create_calendar_event": self._create_event,
+            "check_availability": self._check_availability,
+            "cancel_calendar_event": self._cancel_event
+        }
+        
+        handler = tool_handlers.get(tool_name)
+        if not handler:
+            return {"error": "unknown_tool", "message": f"Tool '{tool_name}' not found"}
+        
+        result = await handler(args, google_token)
+        result["token_vault_info"] = token_vault_info
+        return result
+    
+    async def _list_events(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
+        """List calendar events"""
+        days_ahead = args.get("days_ahead", 7)
+        search_query = args.get("search_query", "").lower()
+        
+        # If we have a real token, call Google API
+        if google_token:
+            try:
+                return await self._call_google_api(
+                    "GET",
+                    f"/calendars/primary/events",
+                    google_token,
+                    params={
+                        "maxResults": 20,
+                        "orderBy": "startTime",
+                        "singleEvents": True,
+                        "timeMin": datetime.now().isoformat() + "Z"
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Google API call failed, using mock data: {e}")
+        
+        # Use mock data
+        events = self.mock_events
+        
+        # Filter by search query
+        if search_query:
+            events = [
+                e for e in events 
+                if search_query in e.get("summary", "").lower() or
+                   any(search_query in a.get("displayName", "").lower() for a in e.get("attendees", []))
+            ]
+        
+        return {
+            "events": events,
+            "count": len(events),
+            "days_ahead": days_ahead,
+            "source": "Google Calendar (via Auth0 Token Vault)" if google_token else "Demo Data"
+        }
+    
+    async def _get_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
+        """Get specific event details"""
+        event_id = args.get("event_id")
+        
+        if google_token:
+            try:
+                return await self._call_google_api(
+                    "GET",
+                    f"/calendars/primary/events/{event_id}",
+                    google_token
+                )
+            except Exception as e:
+                logger.warning(f"Google API call failed, using mock data: {e}")
+        
+        # Mock lookup
+        for event in self.mock_events:
+            if event["id"] == event_id:
+                return {"event": event, "source": "Demo Data"}
+        
+        return {"error": "not_found", "message": f"Event '{event_id}' not found"}
+    
+    async def _create_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
+        """Create a new calendar event"""
+        title = args.get("title")
+        description = args.get("description", "")
+        start_time = args.get("start_time")
+        duration = args.get("duration_minutes", 60)
+        attendee_email = args.get("attendee_email")
+        attendee_name = args.get("attendee_name", "")
+        
+        # Parse start time (simplified for demo)
+        try:
+            # Handle relative dates
+            if "tomorrow" in start_time.lower():
+                start_dt = datetime.now() + timedelta(days=1)
+                start_dt = start_dt.replace(hour=14, minute=0)  # Default 2pm
+            elif "next" in start_time.lower():
+                start_dt = datetime.now() + timedelta(days=7)
+                start_dt = start_dt.replace(hour=10, minute=0)  # Default 10am
+            else:
+                start_dt = datetime.fromisoformat(start_time.replace("Z", ""))
+        except:
+            start_dt = datetime.now() + timedelta(days=1, hours=14)
+        
+        end_dt = start_dt + timedelta(minutes=duration)
+        
+        event_data = {
+            "summary": title,
+            "description": description,
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": "America/New_York"},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": "America/New_York"},
+            "attendees": [{"email": attendee_email, "displayName": attendee_name}] if attendee_email else []
+        }
+        
+        if google_token:
+            try:
+                return await self._call_google_api(
+                    "POST",
+                    f"/calendars/primary/events",
+                    google_token,
+                    json_data=event_data
+                )
+            except Exception as e:
+                logger.warning(f"Google API call failed, using mock: {e}")
+        
+        # Mock creation
+        new_event = {
+            "id": f"evt{len(self.mock_events) + 1:03d}",
+            "summary": title,
+            "description": description,
+            "start": {"dateTime": start_dt.isoformat()},
+            "end": {"dateTime": end_dt.isoformat()},
+            "attendees": event_data["attendees"],
+            "status": "confirmed"
+        }
+        self.mock_events.append(new_event)
+        
+        return {
+            "status": "created",
+            "event": new_event,
+            "message": f"Meeting '{title}' scheduled for {start_dt.strftime('%B %d at %I:%M %p')}",
+            "source": "Google Calendar (via Auth0 Token Vault)" if google_token else "Demo Data"
+        }
+    
+    async def _check_availability(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
+        """Check availability for a time slot"""
+        date_str = args.get("date", "tomorrow")
+        time_str = args.get("time", "")
+        
+        # Parse date (simplified)
+        if "tomorrow" in date_str.lower():
+            check_date = datetime.now() + timedelta(days=1)
+        elif "friday" in date_str.lower():
+            check_date = datetime.now()
+            while check_date.weekday() != 4:  # Friday
+                check_date += timedelta(days=1)
+        else:
+            check_date = datetime.now() + timedelta(days=1)
+        
+        # Parse time
+        if time_str:
+            if "pm" in time_str.lower():
+                hour = int(time_str.replace("pm", "").strip())
+                if hour != 12:
+                    hour += 12
+            elif "am" in time_str.lower():
+                hour = int(time_str.replace("am", "").strip())
+            else:
+                hour = 14  # Default 2pm
+            check_date = check_date.replace(hour=hour, minute=0)
+        
+        # Check against mock events (simplified)
+        conflicts = []
+        for event in self.mock_events:
+            event_start = datetime.fromisoformat(event["start"]["dateTime"].replace("Z", "").split("+")[0])
+            if event_start.date() == check_date.date():
+                if abs((event_start - check_date).total_seconds()) < 3600:  # Within 1 hour
+                    conflicts.append(event)
+        
+        if conflicts:
+            return {
+                "available": False,
+                "message": f"You have a conflict at that time: {conflicts[0]['summary']}",
+                "conflicts": conflicts,
+                "suggestion": "Would you like me to find an alternative time?"
+            }
+        else:
+            return {
+                "available": True,
+                "message": f"You are free on {check_date.strftime('%B %d at %I:%M %p')}",
+                "date": check_date.isoformat()
+            }
+    
+    async def _cancel_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
+        """Cancel a calendar event"""
+        event_id = args.get("event_id")
+        
+        if google_token:
+            try:
+                await self._call_google_api(
+                    "DELETE",
+                    f"/calendars/primary/events/{event_id}",
+                    google_token
+                )
+                return {"status": "cancelled", "event_id": event_id}
+            except Exception as e:
+                logger.warning(f"Google API call failed: {e}")
+        
+        # Mock cancellation
+        for i, event in enumerate(self.mock_events):
+            if event["id"] == event_id:
+                cancelled = self.mock_events.pop(i)
+                return {
+                    "status": "cancelled",
+                    "event": cancelled,
+                    "message": f"Meeting '{cancelled['summary']}' has been cancelled"
+                }
+        
+        return {"error": "not_found", "message": f"Event '{event_id}' not found"}
+    
+    async def _call_google_api(
+        self, 
+        method: str, 
+        endpoint: str, 
+        token: str,
+        params: Dict = None,
+        json_data: Dict = None
+    ) -> Dict[str, Any]:
+        """Make authenticated call to Google Calendar API"""
+        url = f"{self.calendar_api_base}{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        if method == "GET":
+            resp = requests.get(url, headers=headers, params=params, timeout=30)
+        elif method == "POST":
+            resp = requests.post(url, headers=headers, json=json_data, timeout=30)
+        elif method == "DELETE":
+            resp = requests.delete(url, headers=headers, timeout=30)
+        else:
+            raise ValueError(f"Unsupported method: {method}")
+        
+        if resp.status_code >= 400:
+            logger.error(f"Google API error: {resp.status_code} - {resp.text}")
+            raise Exception(f"Google API error: {resp.status_code}")
+        
+        return resp.json() if resp.text else {"status": "success"}

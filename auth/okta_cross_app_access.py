@@ -34,7 +34,7 @@ class OktaCrossAppAccessManager:
     
     def __init__(self):
         self.okta_domain = os.getenv("OKTA_DOMAIN", "").strip()
-        self.auth_server_id = os.getenv("OKTA_AUTH_SERVER_ID", "").strip()
+        self.auth_server_id = os.getenv("OKTA_MCP_AUTH_SERVER_ID", "").strip()
         self.agent_id = os.getenv("OKTA_AGENT_ID", "").strip()
         self.mcp_audience = os.getenv("OKTA_MCP_AUDIENCE", "").strip()
         
