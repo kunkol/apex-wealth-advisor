@@ -205,16 +205,27 @@ export default function ApexWealthAdvisor() {
               </div>
             </div>
 
-            {/* Center - Prompt Library */}
-            <button
-              onClick={() => setShowPromptLibrary(!showPromptLibrary)}
-              className={`flex items-center space-x-2 px-4 py-1.5 rounded-lg transition-all text-sm ${
-                showPromptLibrary ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              <span>📚</span>
-              <span>Prompt Library</span>
-            </button>
+            {/* Center - Actions */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleNewChat}
+                className="flex items-center space-x-2 px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New Chat</span>
+              </button>
+              <button
+                onClick={() => setShowPromptLibrary(!showPromptLibrary)}
+                className={`flex items-center space-x-2 px-4 py-1.5 rounded-lg transition-all text-sm ${
+                  showPromptLibrary ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <span>📚</span>
+                <span>Prompt Library</span>
+              </button>
+            </div>
 
             {/* Right - User & Status */}
             <div className="flex items-center space-x-4">
@@ -264,42 +275,42 @@ export default function ApexWealthAdvisor() {
       )}
 
       {/* Main 3-Column Grid */}
-      <main className="flex-1 overflow-hidden">
-        <div className="h-full grid grid-cols-12 divide-x divide-slate-800">
+      <main className="flex-1 overflow-hidden p-2">
+        <div className="h-full grid grid-cols-12 gap-2">
           
           {/* LEFT: Chat - 50% (6 cols) */}
-          <div className="col-span-6 flex flex-col bg-white">
+          <div className="col-span-6 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+            <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-4">
                 {messages.map((msg) => (
                   <div key={msg.id}>
                     {msg.role === 'user' ? (
                       <div className="flex justify-end">
-                        <div className="bg-amber-500 text-white px-4 py-2 rounded-2xl rounded-br-md max-w-md">
+                        <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-md">
                           <p className="text-sm">{msg.content}</p>
-                          <p className="text-xs text-amber-200 mt-1">{formatTime(msg.timestamp)}</p>
+                          <p className="text-xs text-amber-800 mt-1">{formatTime(msg.timestamp)}</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-md p-4 max-w-2xl shadow-sm">
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{msg.content}</p>
+                      <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm p-4 max-w-2xl">
+                        <p className="text-sm text-slate-200 whitespace-pre-wrap">{msg.content}</p>
                         {msg.toolsCalled && msg.toolsCalled.length > 0 && (
-                          <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-1">
+                          <div className="mt-3 pt-3 border-t border-slate-700 flex flex-wrap gap-1">
                             {msg.toolsCalled.map((tool, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
-                                {tool}
+                              <span key={i} className="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded">
+                                ✓ {tool}
                               </span>
                             ))}
                           </div>
                         )}
-                        <p className="text-xs text-slate-400 mt-2">{formatTime(msg.timestamp)}</p>
+                        <p className="text-xs text-slate-500 mt-2">{formatTime(msg.timestamp)}</p>
                       </div>
                     )}
                   </div>
                 ))}
                 {isTyping && (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-4 max-w-md shadow-sm">
+                  <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 max-w-md">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -312,19 +323,19 @@ export default function ApexWealthAdvisor() {
             </div>
 
             {/* Input */}
-            <div className="border-t border-slate-200 p-3 bg-white">
+            <div className="border-t border-slate-800 p-3 bg-slate-900">
               <form onSubmit={handleSubmit} className="flex items-center space-x-2">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about clients, portfolios, transactions..."
-                  className="flex-1 p-3 bg-slate-100 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 placeholder-slate-400 text-sm"
+                  className="flex-1 p-3 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-white placeholder-slate-500 text-sm"
                   disabled={isLoading}
                 />
                 <button
                   type="submit"
                   disabled={isLoading || !input.trim()}
-                  className="p-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-all"
+                  className="p-3 bg-amber-500 text-slate-900 rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-all"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -335,80 +346,62 @@ export default function ApexWealthAdvisor() {
           </div>
 
           {/* CENTER: Architecture Visual - 25% (3 cols) */}
-          <div className="col-span-3 bg-slate-900 p-4 overflow-y-auto">
-            <h3 className="text-sm font-semibold text-white mb-4">Security Architecture</h3>
+          <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 p-4 overflow-y-auto">
+            <h3 className="text-sm font-semibold text-white mb-4">Security Flow</h3>
             
-            {/* Visual Flow */}
-            <div className="space-y-3">
+            {/* Visual Flow - Clean */}
+            <div className="space-y-4">
               {/* User */}
               <div className="flex items-center justify-center">
-                <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-xs font-medium">
-                  {demoMode ? 'Demo Advisor' : (session?.user?.name || 'User')} ✓ Logged In
+                <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-sm font-medium">
+                  👤 {demoMode ? 'Demo Advisor' : (session?.user?.name || 'User')}
                 </div>
               </div>
               
               <div className="flex justify-center">
-                <div className="w-0.5 h-6 bg-amber-500"></div>
+                <div className="w-0.5 h-8 bg-slate-600"></div>
               </div>
 
-              {/* Okta */}
+              {/* Identity Provider */}
               <div className="flex items-center justify-center">
                 <div className="px-6 py-3 bg-blue-600 rounded-xl text-white text-center">
-                  <div className="flex items-center justify-center space-x-2 mb-1">
-                    <span className="font-bold text-sm">OKTA</span>
-                  </div>
-                  <div className="flex space-x-1 justify-center">
-                    <span className="text-xs bg-blue-500 px-2 py-0.5 rounded">SSO</span>
-                    <span className="text-xs bg-blue-500 px-2 py-0.5 rounded">XAA</span>
-                    <span className="text-xs bg-blue-500 px-2 py-0.5 rounded">ID-JAG</span>
-                  </div>
+                  <p className="font-semibold text-sm">Identity Provider</p>
+                  <p className="text-xs text-blue-200">Authentication & Token Exchange</p>
                 </div>
               </div>
 
               <div className="flex justify-center">
-                <div className="w-0.5 h-6 bg-amber-500"></div>
+                <div className="w-0.5 h-8 bg-slate-600"></div>
               </div>
 
               {/* AI Agent */}
               <div className="flex items-center justify-center">
                 <div className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
-                  <div className="flex items-center justify-center space-x-2 mb-1">
-                    <span className="text-lg">🤖</span>
-                    <span className="font-bold text-slate-900">Buffett AI Agent</span>
-                  </div>
-                  <p className="text-xs text-slate-800">Claude + Tool Orchestration</p>
+                  <p className="font-semibold text-slate-900">🤖 AI Agent</p>
+                  <p className="text-xs text-slate-800">Tool Orchestration</p>
                 </div>
               </div>
 
-              <div className="flex justify-center items-center space-x-8">
-                <div className="w-12 h-0.5 bg-slate-600"></div>
-                <div className="w-12 h-0.5 bg-slate-600"></div>
+              <div className="flex justify-center">
+                <div className="w-0.5 h-8 bg-slate-600"></div>
               </div>
 
               {/* Backend Services */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                  <div className="text-lg mb-1">🏢</div>
-                  <div className="text-xs font-medium text-white">Internal MCP</div>
-                  <div className="text-xs text-slate-400">Portfolio Server</div>
-                  <div className="mt-2">
-                    <span className="text-xs bg-blue-600 px-2 py-0.5 rounded text-white">Okta XAA</span>
-                  </div>
+                  <p className="text-xs font-medium text-white">Internal APIs</p>
+                  <p className="text-xs text-slate-500">Portfolio Data</p>
                 </div>
                 <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                  <div className="text-lg mb-1">☁️</div>
-                  <div className="text-xs font-medium text-white">External SaaS</div>
-                  <div className="text-xs text-slate-400">Google Calendar</div>
-                  <div className="mt-2">
-                    <span className="text-xs bg-orange-600 px-2 py-0.5 rounded text-white">Token Vault</span>
-                  </div>
+                  <p className="text-xs font-medium text-white">External APIs</p>
+                  <p className="text-xs text-slate-500">Calendar, CRM</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* RIGHT: Real Token Flow - 25% (3 cols) - Like Indranil's */}
-          <div className="col-span-3 bg-slate-900 overflow-y-auto">
+          <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
             <div className="p-2 space-y-2">
               {/* ID Token Card */}
               <IdTokenCard idToken={(session as any)?.idToken || ''} />
