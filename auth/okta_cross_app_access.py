@@ -110,7 +110,7 @@ class OktaCrossAppAccessManager:
             id_jag_result = self.sdk.cross_app_access.exchange_token(
                 token=id_token,
                 audience=id_jag_audience,
-                scope="read_data write_data"
+                scope="mcp:read"
             )
             logger.info(f"[XAA] Step 1 SUCCESS: ID-JAG token obtained, expires_in={id_jag_result.expires_in}s")
             
