@@ -26,27 +26,35 @@ export default function ApexWealthAdvisor() {
   const [lastToolsCalled, setLastToolsCalled] = useState<string[]>([]);
   const [showArchitecture, setShowArchitecture] = useState(true);
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Check for demo mode on mount
+  useEffect(() => {
+    const isDemoMode = localStorage.getItem('demoMode') === 'true';
+    setDemoMode(isDemoMode);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const initializeWelcome = () => {
+    const userName = session?.user?.name || (demoMode ? 'Demo Advisor' : 'Advisor');
     setMessages([{
       id: '1',
-      content: `Welcome to Apex Wealth Advisor, ${session?.user?.name || 'Advisor'}! I'm Buffett, your AI-powered wealth management assistant.\n\n🎯 What I can help with:\n• Client portfolio analysis & holdings\n• Compliance status checks\n• Transaction processing\n• Risk assessments\n\n💡 Try clicking "Prompt Library" above for demo scenarios, or ask me anything!`,
+      content: `Welcome to Apex Wealth Advisor, ${userName}! I'm Buffett, your AI-powered wealth management assistant.\n\n🎯 What I can help with:\n• Client portfolio analysis & holdings\n• Schedule meetings via Google Calendar\n• Transaction processing with step-up auth\n• Risk assessments\n\n💡 Try clicking "Prompt Library" above for demo scenarios, or ask me anything!`,
       role: 'assistant',
       timestamp: new Date()
     }]);
   };
 
   useEffect(() => {
-    if (session && messages.length === 0) {
+    if ((session || demoMode) && messages.length === 0) {
       initializeWelcome();
     }
-  }, [session]);
+  }, [session, demoMode]);
 
   const handleNewChat = () => {
     setMessages([]);
@@ -141,7 +149,7 @@ export default function ApexWealthAdvisor() {
   }
 
   // Login screen
-  if (!session) {
+  if (!session && !demoMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col">
         {/* Login Header */}
@@ -153,7 +161,7 @@ export default function ApexWealthAdvisor() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">Apex Wealth Advisor</h1>
-                <p className="text-xs text-slate-500">Enterprise AI Platform</p>
+                <p className="text-xs text-slate-500">AI-Powered Portfolio Management</p>
               </div>
             </div>
           </div>
@@ -161,52 +169,21 @@ export default function ApexWealthAdvisor() {
 
         {/* Login Content */}
         <div className="flex-1 flex items-center justify-center p-6">
-          <div className="max-w-lg w-full">
+          <div className="max-w-md w-full">
             <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 p-10 text-center">
               {/* Logo */}
               <div className="mb-8">
                 <div className="w-24 h-24 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-amber-500/30">
                   <span className="text-4xl font-bold text-slate-900">AW</span>
                 </div>
-                <h1 className="text-4xl font-bold text-white mb-2">Apex Wealth Advisor</h1>
-                <p className="text-slate-400 text-lg">AI-Powered Portfolio Management</p>
-              </div>
-
-              {/* Features */}
-              <div className="space-y-4 mb-10 text-left">
-                <div className="flex items-center space-x-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-2xl">🔐</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-white">Okta Cross-App Access (XAA)</p>
-                    <p className="text-sm text-slate-400">ID-JAG secure token exchange</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                  <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-2xl">🔑</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-white">Auth0 Token Vault</p>
-                    <p className="text-sm text-slate-400">Secure SaaS API credentials</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="text-2xl">⚡</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-white">FGA & CIBA Step-Up</p>
-                    <p className="text-sm text-slate-400">Fine-grained authorization</p>
-                  </div>
-                </div>
+                <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+                <p className="text-slate-400">Sign in to manage your client portfolios</p>
               </div>
 
               {/* Login Button */}
               <button
                 onClick={() => signIn('okta')}
-                className="w-full bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:via-amber-600 hover:to-amber-700 text-slate-900 font-bold py-4 px-8 rounded-2xl transition-all duration-300 shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 flex items-center justify-center space-x-3 text-lg"
+                className="w-full bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:via-amber-600 hover:to-amber-700 text-slate-900 font-bold py-4 px-8 rounded-2xl transition-all duration-300 shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 flex items-center justify-center space-x-3 text-lg mb-4"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm0 4.8a3.6 3.6 0 110 7.2 3.6 3.6 0 010-7.2zm0 16.8a9.6 9.6 0 01-8-4.284c.04-2.652 5.333-4.116 8-4.116s7.96 1.464 8 4.116A9.6 9.6 0 0112 21.6z"/>
@@ -214,8 +191,28 @@ export default function ApexWealthAdvisor() {
                 <span>Sign in with Okta</span>
               </button>
 
+              {/* Demo Mode Button */}
+              <button
+                onClick={() => {
+                  // Create a mock session for demo
+                  setMessages([{
+                    id: '1',
+                    content: `Welcome to Apex Wealth Advisor! I'm Buffett, your AI-powered wealth management assistant.\n\n🎯 What I can help with:\n• Client portfolio analysis & holdings\n• Schedule meetings via Google Calendar\n• Transaction processing with step-up auth\n• Risk assessments\n\n💡 Try clicking "Prompt Library" above for demo scenarios, or ask me anything!`,
+                    role: 'assistant',
+                    timestamp: new Date()
+                  }]);
+                  // Force re-render by setting a demo flag in localStorage
+                  localStorage.setItem('demoMode', 'true');
+                  window.location.reload();
+                }}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2"
+              >
+                <span>🎮</span>
+                <span>Try Demo Mode</span>
+              </button>
+
               <p className="text-xs text-slate-600 mt-6">
-                Enterprise SSO Authentication
+                Demo mode uses mock data • SSO connects to live systems
               </p>
             </div>
           </div>
@@ -295,17 +292,29 @@ export default function ApexWealthAdvisor() {
             {/* User Info */}
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-medium text-white">{session.user?.name}</p>
-                <p className="text-xs text-slate-500">{session.user?.email}</p>
+                <p className="text-sm font-medium text-white">
+                  {demoMode ? 'Demo Advisor' : session?.user?.name}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {demoMode ? '🎮 Demo Mode' : session?.user?.email}
+                </p>
               </div>
               <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center text-white font-semibold border-2 border-slate-600">
-                {session.user?.name?.charAt(0) || 'U'}
+                {demoMode ? '🎮' : (session?.user?.name?.charAt(0) || 'U')}
               </div>
               <button 
-                onClick={() => signOut()} 
+                onClick={() => {
+                  if (demoMode) {
+                    localStorage.removeItem('demoMode');
+                    setDemoMode(false);
+                    setMessages([]);
+                  } else {
+                    signOut();
+                  }
+                }} 
                 className="px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
               >
-                Sign Out
+                {demoMode ? 'Exit Demo' : 'Sign Out'}
               </button>
             </div>
           </div>
