@@ -76,7 +76,7 @@ export default function ApexWealthAdvisor() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(session as any)?.accessToken || ''}`, 'X-ID-Token': (session as any)?.idToken || '' },
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
           session_id: session?.user?.email || 'session'
