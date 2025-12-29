@@ -337,8 +337,8 @@ export default function ApexWealthAdvisor() {
         {/* Architecture Flow */}
         {showArchitecture && (
           <ArchitectureFlowVisual 
-            isAuthenticated={!!session}
-            userName={session.user?.name || 'Advisor'}
+            isAuthenticated={!!session || demoMode}
+            userName={demoMode ? 'Demo Advisor' : (session?.user?.name || 'Advisor')}
             toolsCalled={lastToolsCalled}
           />
         )}
