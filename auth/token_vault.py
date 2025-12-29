@@ -51,7 +51,7 @@ class TokenVaultClient:
                 "audience": self.vault_audience,
                 "client_id": self.auth0_client_id,
                 "client_secret": self.auth0_client_secret,
-                "subject_token_type": "urn:okta:params:oauth:token-type:access_token",
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
                 "subject_token": okta_token,
                 "scope": "read:vault"
             }
