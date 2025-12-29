@@ -51,7 +51,7 @@ class TokenVaultClient:
                 "audience": self.vault_audience,
                 "client_id": self.auth0_client_id,
                 "client_secret": self.auth0_client_secret,
-                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "subject_token_type": "urn:dell:okta-token",
                 "subject_token": okta_token,
                 "scope": "read:vault"
             }
@@ -96,7 +96,7 @@ class TokenVaultClient:
                 "grant_type": "urn:auth0:params:oauth:grant-type:token-exchange:federated-connection-access-token",
                 "client_id": self.auth0_client_id,
                 "client_secret": self.auth0_client_secret,
-                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "subject_token_type": "urn:dell:okta-token",
                 "subject_token": token,
                 "connection": connection,
                 "requested_token_type": "http://auth0.com/oauth/token-type/federated-connection-access-token"
