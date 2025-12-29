@@ -108,7 +108,7 @@ class OktaCrossAppAccessManager:
             logger.debug(f"[XAA] Step 1: Exchanging ID token, audience={id_jag_audience}")
             
             id_jag_result = self.sdk.cross_app_access.exchange_token(
-                id_token=id_token,
+                token=id_token,
                 audience=id_jag_audience,
                 scope="read_data write_data"
             )
