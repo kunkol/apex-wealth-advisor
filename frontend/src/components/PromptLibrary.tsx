@@ -40,16 +40,16 @@ const CATEGORIES: Category[] = [
     status: 'ready',
     icon: '🔐',
     prompts: [
-      { id: '1.1', text: 'Look up customer Alice Johnson', description: 'Returns profile, balance, status', securityDemo: 'XAA token flow', ready: true },
-      { id: '1.2', text: "What's Bob Smith's account balance?", description: 'Returns balance ($15,420)', securityDemo: 'ID-JAG exchange', ready: true },
-      { id: '1.3', text: "Show me Charlie Brown's information", description: 'ACCESS DENIED - compliance hold', securityDemo: 'FGA denial', ready: true },
-      { id: '1.4', text: 'List all my customers', description: 'Returns Alice + Bob (not Charlie)', securityDemo: 'Filtered by auth', ready: true },
-      { id: '1.5', text: 'Process a $500 payment for Alice', description: 'Auto-approved', securityDemo: 'Low-value auto', ready: true },
-      { id: '1.6', text: 'Process a $5,000 payment for Bob', description: 'Logged and approved', securityDemo: 'Medium logging', ready: true },
-      { id: '1.7', text: 'Process a $15,000 payment for Alice', description: 'CIBA step-up required', securityDemo: 'CIBA push', ready: true },
-      { id: '1.8', text: 'Process $50,000 to Offshore Holdings LLC', description: 'DENIED - unverified', securityDemo: 'Risk policy', ready: true },
-      { id: '1.9', text: "Update Alice's phone to 555-1234", description: 'Approved - write permission', securityDemo: 'Write auth', ready: true },
-      { id: '1.10', text: "Delete Bob's account", description: 'DENIED - insufficient privileges', securityDemo: 'Role denial', ready: true },
+      { id: '1.1', text: 'Look up Marcus Thompson', description: 'Returns profile, $2.4M portfolio, status', securityDemo: 'XAA token flow', ready: true },
+      { id: '1.2', text: "What's Elena Rodriguez's account balance?", description: 'Returns $850K retirement fund', securityDemo: 'ID-JAG exchange', ready: true },
+      { id: '1.3', text: "Show me James Chen's portfolio", description: 'Business owner, $1.2M holdings', securityDemo: 'Portfolio details', ready: true },
+      { id: '1.4', text: 'List all my clients', description: 'Returns 4 active clients', securityDemo: 'Filtered by auth', ready: true },
+      { id: '1.5', text: 'Process a $500 payment for Marcus Thompson', description: 'Auto-approved', securityDemo: 'Low-value auto', ready: true },
+      { id: '1.6', text: 'Process a $5,000 payment for Elena Rodriguez', description: 'Logged and approved', securityDemo: 'Medium logging', ready: true },
+      { id: '1.7', text: 'Process a $15,000 payment for Priya Patel', description: 'CIBA step-up required', securityDemo: 'CIBA push', ready: true },
+      { id: '1.8', text: 'Process $50,000 to Offshore Holdings LLC', description: 'DENIED - unverified recipient', securityDemo: 'Risk policy', ready: true },
+      { id: '1.9', text: "Update Marcus Thompson's phone to 555-1234", description: 'Approved - write permission', securityDemo: 'Write auth', ready: true },
+      { id: '1.10', text: "What's Priya Patel's risk profile?", description: 'Aggressive, 18.5% YTD return', securityDemo: 'Client lookup', ready: true },
     ]
   },
   {
@@ -78,12 +78,12 @@ const CATEGORIES: Category[] = [
     status: 'ready',
     icon: '🛡️',
     prompts: [
-      { id: '6.1', text: "Show me Charlie Brown's data", description: 'FGA Compliance Hold', securityDemo: 'Red denial badge', ready: true },
-      { id: '6.2', text: 'Transfer $50K to Offshore Holdings LLC', description: 'Risk - Unverified', securityDemo: 'Payment blocked', ready: true },
-      { id: '6.3', text: 'Delete the Thompson account', description: 'RBAC - Insufficient', securityDemo: 'Role-based denial', ready: true },
-      { id: '6.4', text: 'Process $15,000 payment for Alice', description: 'CIBA Step-up', securityDemo: 'Push notification', ready: true },
+      { id: '6.1', text: "Access restricted client data", description: 'FGA Compliance Hold Demo', securityDemo: 'Red denial badge', ready: true },
+      { id: '6.2', text: 'Transfer $50K to Offshore Holdings LLC', description: 'Risk - Unverified Recipient', securityDemo: 'Payment blocked', ready: true },
+      { id: '6.3', text: 'Delete Marcus Thompson account', description: 'RBAC - Insufficient Privileges', securityDemo: 'Role-based denial', ready: true },
+      { id: '6.4', text: 'Process $15,000 payment for Priya Patel', description: 'CIBA Step-up Required', securityDemo: 'Push notification', ready: true },
       { id: '6.5', text: 'Access system without logging in', description: 'Auth Required', securityDemo: 'Redirect to Okta', ready: true },
-      { id: '6.6', text: 'Approve pending CIBA (after timeout)', description: 'CIBA Timeout', securityDemo: 'Approval expired', ready: true },
+      { id: '6.6', text: 'Approve pending CIBA (after timeout)', description: 'CIBA Timeout Demo', securityDemo: 'Approval expired', ready: true },
     ]
   },
   {
@@ -95,7 +95,7 @@ const CATEGORIES: Category[] = [
     prompts: [
       { id: '2.1', text: 'Look up Marcus Thompson in Salesforce', description: 'Contact record', securityDemo: 'Token Vault', ready: false },
       { id: '2.2', text: 'What opportunities with Thompson Family Trust?', description: '$500K rebalancing', securityDemo: 'SF API', ready: false },
-      { id: '2.3', text: "Show Elena Rodriguez's account details", description: 'Retirement planning', securityDemo: 'Real CRM', ready: false },
+      { id: '2.3', text: "Show Elena Rodriguez's Salesforce record", description: 'Retirement planning', securityDemo: 'Real CRM', ready: false },
       { id: '2.4', text: "What's in my sales pipeline this quarter?", description: '5 opportunities', securityDemo: 'Aggregated', ready: false },
       { id: '2.5', text: 'Find all high-value clients over $1M', description: 'Filtered query', securityDemo: 'Filtered', ready: false },
     ]
