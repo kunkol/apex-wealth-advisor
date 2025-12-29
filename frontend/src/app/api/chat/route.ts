@@ -5,26 +5,38 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://apex-wealth-api.onre
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, idToken } = body;
 
-    console.log(`[CHAT API] Forwarding request to backend: ${API_URL}/api/chat`);
+    console.log('[CHAT API] Forwarding request to backend:', API_URL);
 
-    // Forward request to backend API
+    // Build headers - forward auth tokens
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Forward ID token from header
+    const idToken = request.headers.get('X-ID-Token');
+    if (idToken) {
+      headers['X-ID-Token'] = idToken;
+    }
+    
+    // Forward Authorization (access token) for Token Vault
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+
     const response = await fetch(`${API_URL}/api/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(idToken && { 'X-ID-Token': idToken }),
-      },
+      headers,
       body: JSON.stringify({
-        messages,
+        messages: body.messages,
         session_id: body.session_id
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[CHAT API] Backend error: ${response.status} - ${errorText}`);
+      console.error('[CHAT API] Backend error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Backend API error', details: errorText },
         { status: response.status }
@@ -32,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log(`[CHAT API] Response received, tools_called: ${data.tools_called?.join(', ') || 'none'}`);
+    console.log('[CHAT API] Response received, tools_called:', data.tools_called?.join(', ') || 'none');
 
     return NextResponse.json(data);
   } catch (error) {
