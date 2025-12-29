@@ -265,7 +265,7 @@ export default function ApexWealthAdvisor() {
         <div className="absolute top-12 left-0 right-0 z-50 px-4 py-2">
           <PromptLibrary
             isOpen={showPromptLibrary}
-            onToggle={() => setShowPromptLibrary(false)}
+            onClose={() => setShowPromptLibrary(false)}
             onSelectPrompt={(prompt) => {
               setInput(prompt);
               setShowPromptLibrary(false);
