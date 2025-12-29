@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import IdTokenCard from '@/components/IdTokenCard';
 import XAAFlowCard from '@/components/XAAFlowCard';
 import MCPToolsCard from '@/components/MCPToolsCard';
+import TokenVaultFlow from '@/components/TokenVaultFlow';
 import PromptLibrary from '@/components/PromptLibrary';
 
 interface Message {
@@ -22,40 +23,34 @@ export default function ApexWealthAdvisor() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [lastXAAInfo, setLastXAAInfo] = useState<any>(null);
+  const [lastTokenVaultInfo, setLastTokenVaultInfo] = useState<any>(null);
   const [lastToolsCalled, setLastToolsCalled] = useState<string[]>([]);
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Check for demo mode on mount
-  useEffect(() => {
-    const isDemoMode = localStorage.getItem('demoMode') === 'true';
-    setDemoMode(isDemoMode);
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const initializeWelcome = () => {
-    const userName = session?.user?.name || (demoMode ? 'Demo Advisor' : 'Advisor');
     setMessages([{
       id: '1',
-      content: `Welcome to Apex Wealth Advisor! I can help you with client information, portfolio data, calendar scheduling, and transactions. How can I assist you today?`,
+      content: `Welcome to Apex Wealth Advisor, ${session?.user?.name || 'Advisor'}! I can help you with client information, portfolio data, calendar scheduling, and transactions. How can I assist you today?`,
       role: 'assistant',
       timestamp: new Date()
     }]);
   };
 
   useEffect(() => {
-    if ((session || demoMode) && messages.length === 0) {
+    if (session && messages.length === 0) {
       initializeWelcome();
     }
-  }, [session, demoMode]);
+  }, [session]);
 
   const handleNewChat = () => {
     setMessages([]);
     setLastXAAInfo(null);
+    setLastTokenVaultInfo(null);
     setLastToolsCalled([]);
     setTimeout(() => initializeWelcome(), 100);
   };
@@ -84,7 +79,7 @@ export default function ApexWealthAdvisor() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
-          session_id: session?.user?.email || 'demo-session'
+          session_id: session?.user?.email || 'session'
         })
       });
 
@@ -93,6 +88,10 @@ export default function ApexWealthAdvisor() {
 
       if (data.xaa_info) {
         setLastXAAInfo(data.xaa_info);
+      }
+      
+      if (data.token_vault_info) {
+        setLastTokenVaultInfo(data.token_vault_info);
       }
       
       if (data.tools_called?.length > 0) {
@@ -135,8 +134,8 @@ export default function ApexWealthAdvisor() {
     );
   }
 
-  // Login screen - Clean, no tech details
-  if (!session && !demoMode) {
+  // Login screen - Clean, professional
+  if (!session) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col">
         <header className="border-b border-slate-800 bg-slate-900/50">
@@ -164,22 +163,17 @@ export default function ApexWealthAdvisor() {
 
               <button
                 onClick={() => signIn('okta')}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-bold py-4 px-8 rounded-2xl transition-all mb-3"
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-bold py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3"
               >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.389 0 0 5.389 0 12s5.389 12 12 12 12-5.389 12-12S18.611 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/>
+                </svg>
                 Sign in with Okta
               </button>
 
-              <button
-                onClick={() => {
-                  localStorage.setItem('demoMode', 'true');
-                  window.location.reload();
-                }}
-                className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-xl transition-all"
-              >
-                🎮 Try Demo Mode
-              </button>
-
-              <p className="text-xs text-slate-600 mt-6">Demo mode uses mock data</p>
+              <p className="text-xs text-slate-600 mt-6">
+                Secured by Okta Identity Cloud
+              </p>
             </div>
           </div>
         </div>
@@ -194,14 +188,14 @@ export default function ApexWealthAdvisor() {
       <header className="border-b border-slate-800 bg-slate-900 flex-shrink-0">
         <div className="px-4 py-2">
           <div className="flex items-center justify-between">
-            {/* Logo */}
+            {/* Left - Logo & Title */}
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
                 <span className="text-sm font-bold text-slate-900">AW</span>
               </div>
               <div>
-                <h1 className="text-base font-semibold text-white">Apex Wealth Advisor</h1>
-                <p className="text-xs text-slate-500">Powered by AI • Secure • Confidential</p>
+                <h1 className="text-sm font-bold text-white">Apex Wealth Advisor</h1>
+                <p className="text-xs text-slate-500">AI Assistant</p>
               </div>
             </div>
 
@@ -209,21 +203,23 @@ export default function ApexWealthAdvisor() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleNewChat}
-                className="flex items-center space-x-2 px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-all"
+                className="px-3 py-1.5 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-1"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>New Chat</span>
+                New Chat
               </button>
               <button
                 onClick={() => setShowPromptLibrary(!showPromptLibrary)}
-                className={`flex items-center space-x-2 px-4 py-1.5 rounded-lg transition-all text-sm ${
-                  showPromptLibrary ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1 ${
+                  showPromptLibrary ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-white hover:bg-slate-700'
                 }`}
               >
-                <span>📚</span>
-                <span>Prompt Library</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Prompts
               </button>
             </div>
 
@@ -234,45 +230,29 @@ export default function ApexWealthAdvisor() {
                 <span className="text-xs text-slate-400">Online</span>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-white">
-                  {demoMode ? 'Demo Advisor' : session?.user?.name}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {demoMode ? 'demo@apex.com' : session?.user?.email}
-                </p>
+                <p className="text-sm font-medium text-white">{session?.user?.name}</p>
+                <p className="text-xs text-slate-500">{session?.user?.email}</p>
               </div>
               <button 
-                onClick={() => {
-                  if (demoMode) {
-                    localStorage.removeItem('demoMode');
-                    setDemoMode(false);
-                    setMessages([]);
-                  } else {
-                    signOut();
-                  }
-                }} 
+                onClick={() => signOut()} 
                 className="px-3 py-1 text-sm text-slate-400 hover:text-white transition-colors"
               >
-                {demoMode ? 'Exit Demo' : 'Sign Out'}
+                Sign Out
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Prompt Library Overlay */}
-      {showPromptLibrary && (
-        <div className="absolute top-12 left-0 right-0 z-50 px-4 py-2">
-          <PromptLibrary
-            isOpen={showPromptLibrary}
-            onClose={() => setShowPromptLibrary(false)}
-            onSelectPrompt={(prompt) => {
-              setInput(prompt);
-              setShowPromptLibrary(false);
-            }}
-          />
-        </div>
-      )}
+      {/* Prompt Library Modal */}
+      <PromptLibrary
+        isOpen={showPromptLibrary}
+        onClose={() => setShowPromptLibrary(false)}
+        onSelectPrompt={(prompt) => {
+          setInput(prompt);
+          setShowPromptLibrary(false);
+        }}
+      />
 
       {/* Main 3-Column Grid */}
       <main className="flex-1 overflow-hidden p-2">
@@ -328,7 +308,7 @@ export default function ApexWealthAdvisor() {
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about clients, portfolios, transactions..."
+                  placeholder="Ask about clients, portfolios, calendar, transactions..."
                   className="flex-1 p-3 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-white placeholder-slate-500 text-sm"
                   disabled={isLoading}
                 />
@@ -347,70 +327,83 @@ export default function ApexWealthAdvisor() {
 
           {/* CENTER: Architecture Visual - 25% (3 cols) */}
           <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 p-4 overflow-y-auto">
-            <h3 className="text-sm font-semibold text-white mb-4">Security Flow</h3>
+            <h3 className="text-sm font-semibold text-white mb-4">Security Architecture</h3>
             
-            {/* Visual Flow - Clean */}
+            {/* Visual Flow */}
             <div className="space-y-4">
               {/* User */}
               <div className="flex items-center justify-center">
                 <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-sm font-medium">
-                  👤 {demoMode ? 'Demo Advisor' : (session?.user?.name || 'User')}
+                  👤 {session?.user?.name || 'User'}
                 </div>
               </div>
               
               <div className="flex justify-center">
-                <div className="w-0.5 h-8 bg-slate-600"></div>
+                <div className="w-0.5 h-6 bg-slate-600"></div>
               </div>
 
-              {/* Identity Provider */}
+              {/* Okta */}
               <div className="flex items-center justify-center">
-                <div className="px-6 py-3 bg-blue-600 rounded-xl text-white text-center">
-                  <p className="font-semibold text-sm">Identity Provider</p>
-                  <p className="text-xs text-blue-200">Authentication & Token Exchange</p>
+                <div className="px-4 py-2 bg-blue-600 rounded-xl text-white text-center">
+                  <p className="font-semibold text-sm">Okta</p>
+                  <p className="text-xs text-blue-200">XAA / ID-JAG</p>
                 </div>
               </div>
 
               <div className="flex justify-center">
-                <div className="w-0.5 h-8 bg-slate-600"></div>
+                <div className="w-0.5 h-6 bg-slate-600"></div>
               </div>
 
               {/* AI Agent */}
               <div className="flex items-center justify-center">
-                <div className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
-                  <p className="font-semibold text-slate-900">🤖 AI Agent</p>
-                  <p className="text-xs text-slate-800">Tool Orchestration</p>
+                <div className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
+                  <p className="font-semibold text-slate-900 text-sm">🤖 Buffett</p>
+                  <p className="text-xs text-slate-800">AI Agent</p>
                 </div>
               </div>
 
               <div className="flex justify-center">
-                <div className="w-0.5 h-8 bg-slate-600"></div>
+                <div className="w-0.5 h-6 bg-slate-600"></div>
               </div>
 
               {/* Backend Services */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                  <p className="text-xs font-medium text-white">Internal APIs</p>
-                  <p className="text-xs text-slate-500">Portfolio Data</p>
+                <div className="p-2 bg-slate-800 rounded-lg text-center border border-slate-700">
+                  <p className="text-xs font-medium text-white">MCP Server</p>
+                  <p className="text-xs text-green-400">Okta XAA</p>
                 </div>
-                <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                  <p className="text-xs font-medium text-white">External APIs</p>
-                  <p className="text-xs text-slate-500">Calendar, CRM</p>
+                <div className="p-2 bg-slate-800 rounded-lg text-center border border-slate-700">
+                  <p className="text-xs font-medium text-white">Google Cal</p>
+                  <p className="text-xs text-purple-400">Token Vault</p>
+                </div>
+              </div>
+
+              {/* Auth0 Token Vault */}
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <div className="flex items-center justify-center">
+                  <div className="px-4 py-2 bg-purple-600 rounded-xl text-white text-center">
+                    <p className="font-semibold text-sm">Auth0</p>
+                    <p className="text-xs text-purple-200">Token Vault</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: Real Token Flow - 25% (3 cols) - Like Indranil's */}
+          {/* RIGHT: Token Flow Cards - 25% (3 cols) */}
           <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
             <div className="p-2 space-y-2">
               {/* ID Token Card */}
               <IdTokenCard idToken={(session as any)?.idToken || ''} />
               
-              {/* MCP Flow Card */}
-              <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
-              
-              {/* XAA Flow Card with real tokens */}
+              {/* XAA Flow Card */}
               <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
+              
+              {/* Token Vault Flow Card */}
+              <TokenVaultFlow tokenVaultInfo={lastTokenVaultInfo} isActive={lastToolsCalled.some(t => t.includes('calendar'))} />
+              
+              {/* MCP Tools Card */}
+              <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
             </div>
           </div>
         </div>
