@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import SecurityFlowPanel from '@/components/SecurityFlowPanel';
+import IdTokenCard from '@/components/IdTokenCard';
+import XAAFlowCard from '@/components/XAAFlowCard';
+import MCPToolsCard from '@/components/MCPToolsCard';
+import TokenVaultFlow from '@/components/TokenVaultFlow';
 import PromptLibrary from '@/components/PromptLibrary';
 
 interface Message {
@@ -22,7 +25,6 @@ export default function ApexWealthAdvisor() {
   const [lastXAAInfo, setLastXAAInfo] = useState<any>(null);
   const [lastTokenVaultInfo, setLastTokenVaultInfo] = useState<any>(null);
   const [lastToolsCalled, setLastToolsCalled] = useState<string[]>([]);
-  const [currentQuery, setCurrentQuery] = useState<string>('');
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +52,6 @@ export default function ApexWealthAdvisor() {
     setLastXAAInfo(null);
     setLastTokenVaultInfo(null);
     setLastToolsCalled([]);
-    setCurrentQuery('');
     setTimeout(() => initializeWelcome(), 100);
   };
 
@@ -68,7 +69,6 @@ export default function ApexWealthAdvisor() {
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setCurrentQuery(input.trim());
     setInput('');
     setIsLoading(true);
     setIsTyping(true);
@@ -95,7 +95,7 @@ export default function ApexWealthAdvisor() {
       }
       
       if (data.tools_called?.length > 0) {
-        setLastToolsCalled(data.tools_called);
+        setLastToolsCalled(prev => [...new Set([...prev, ...data.tools_called])]);
       }
 
       setMessages(prev => [...prev, {
@@ -181,7 +181,7 @@ export default function ApexWealthAdvisor() {
     );
   }
 
-  // Main Application - 2 Column Layout
+  // Main Application - 3 Column Layout
   return (
     <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
@@ -254,20 +254,20 @@ export default function ApexWealthAdvisor() {
         }}
       />
 
-      {/* Main 2-Column Grid */}
+      {/* Main 3-Column Grid */}
       <main className="flex-1 overflow-hidden p-2">
         <div className="h-full grid grid-cols-12 gap-2">
           
-          {/* LEFT: Chat - 65% (8 cols) */}
-          <div className="col-span-8 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+          {/* LEFT: Chat - 50% (6 cols) */}
+          <div className="col-span-6 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4 max-w-3xl mx-auto">
+              <div className="space-y-4">
                 {messages.map((msg) => (
                   <div key={msg.id}>
                     {msg.role === 'user' ? (
                       <div className="flex justify-end">
-                        <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-lg">
+                        <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-md">
                           <p className="text-sm">{msg.content}</p>
                           <p className="text-xs text-amber-800 mt-1">{formatTime(msg.timestamp)}</p>
                         </div>
@@ -304,7 +304,7 @@ export default function ApexWealthAdvisor() {
 
             {/* Input */}
             <div className="border-t border-slate-800 p-3 bg-slate-900">
-              <form onSubmit={handleSubmit} className="flex items-center space-x-2 max-w-3xl mx-auto">
+              <form onSubmit={handleSubmit} className="flex items-center space-x-2">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -325,19 +325,86 @@ export default function ApexWealthAdvisor() {
             </div>
           </div>
 
-          {/* RIGHT: Security Flow Panel - 35% (4 cols) */}
-          <div className="col-span-4">
-            <SecurityFlowPanel
-              userInfo={{
-                name: session?.user?.name || undefined,
-                email: session?.user?.email || undefined
-              }}
-              currentQuery={currentQuery}
-              xaaInfo={lastXAAInfo}
-              tokenVaultInfo={lastTokenVaultInfo}
-              toolsCalled={lastToolsCalled}
-              isProcessing={isLoading}
-            />
+          {/* CENTER: Architecture Visual - 25% (3 cols) */}
+          <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 p-4 overflow-y-auto">
+            <h3 className="text-sm font-semibold text-white mb-4">Security Flow</h3>
+            
+            {/* Visual Flow */}
+            <div className="space-y-4">
+              {/* User */}
+              <div className="flex items-center justify-center">
+                <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-sm font-medium">
+                  👤 {session?.user?.name || 'User'}
+                </div>
+              </div>
+              
+              <div className="flex justify-center">
+                <div className="w-0.5 h-8 bg-slate-600"></div>
+              </div>
+
+              {/* Identity Provider */}
+              <div className="flex items-center justify-center">
+                <div className="px-6 py-3 bg-blue-600 rounded-xl text-white text-center">
+                  <p className="font-semibold text-sm">Okta</p>
+                  <p className="text-xs text-blue-200">XAA / ID-JAG</p>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="w-0.5 h-8 bg-slate-600"></div>
+              </div>
+
+              {/* AI Agent */}
+              <div className="flex items-center justify-center">
+                <div className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
+                  <p className="font-semibold text-slate-900">🤖 Buffett</p>
+                  <p className="text-xs text-slate-800">AI Agent</p>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <div className="w-0.5 h-8 bg-slate-600"></div>
+              </div>
+
+              {/* Backend Services */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
+                  <p className="text-xs font-medium text-white">MCP Server</p>
+                  <p className="text-xs text-green-400">Okta XAA</p>
+                </div>
+                <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
+                  <p className="text-xs font-medium text-white">Google Cal</p>
+                  <p className="text-xs text-purple-400">Token Vault</p>
+                </div>
+              </div>
+
+              {/* Auth0 */}
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <div className="flex items-center justify-center">
+                  <div className="px-4 py-2 bg-purple-600 rounded-xl text-white text-center">
+                    <p className="font-semibold text-sm">Auth0</p>
+                    <p className="text-xs text-purple-200">Token Vault</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: Token Flow Cards - 25% (3 cols) */}
+          <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
+            <div className="p-2 space-y-2">
+              {/* ID Token Card */}
+              <IdTokenCard idToken={(session as any)?.idToken || ''} />
+              
+              {/* XAA Flow Card */}
+              <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
+              
+              {/* Token Vault Flow Card */}
+              <TokenVaultFlow tokenVaultInfo={lastTokenVaultInfo} isActive={lastToolsCalled.some(t => t.includes('calendar'))} />
+              
+              {/* MCP Tools Card */}
+              <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
+            </div>
           </div>
         </div>
       </main>
