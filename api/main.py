@@ -189,7 +189,7 @@ async def chat(request: ChatRequest, http_request: Request):
         google_token_info = None
         if access_token and token_vault.is_configured():
             # First exchange Okta token for Auth0 vault token
-            vault_token = await token_vault.exchange_okta_token_for_vault_token(access_token)
+            vault_token = await token_vault.exchange_okta_token_for_vault_token(mcp_token_info.get("access_token") if mcp_token_info else access_token)
             if vault_token:
                 # Then get Google token from vault
                 google_token_info = await token_vault.get_google_token(vault_token)
