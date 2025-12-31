@@ -2,228 +2,255 @@
 
 import { useState } from 'react';
 
-interface XAAFlowInfo {
-  id_jag_token?: string;
-  mcp_access_token?: string;
-  expires_in?: number;
-  scope?: string;
-  exchanged_at?: string;
-}
-
 interface XAAFlowCardProps {
-  xaaInfo: XAAFlowInfo | null;
+  xaaInfo?: {
+    configured?: boolean;
+    token_obtained?: boolean;
+    id_jag_token?: string;
+    mcp_token?: string;
+    id_jag_expires_in?: number;
+    mcp_token_expires_in?: number;
+    scope?: string;
+  };
+  tokenVaultInfo?: {
+    configured?: boolean;
+    google_token_obtained?: boolean;
+    salesforce_token_obtained?: boolean;
+    vault_token?: string;
+    google_token?: string;
+    salesforce_token?: string;
+    google_expires_in?: number;
+    salesforce_expires_in?: number;
+  };
   toolsCalled?: string[];
 }
 
-export default function XAAFlowCard({ xaaInfo, toolsCalled }: XAAFlowCardProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+export default function XAAFlowCard({ xaaInfo, tokenVaultInfo, toolsCalled = [] }: XAAFlowCardProps) {
+  const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
-  const copyToClipboard = async (text: string, field: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-    }
+  // Determine which flows were used based on tools called
+  const usedXAA = toolsCalled.some(t => 
+    ['get_client', 'list_clients', 'get_portfolio', 'process_payment', 'update_client'].includes(t)
+  );
+  const usedCalendar = toolsCalled.some(t => 
+    ['list_calendar_events', 'get_calendar_event', 'create_calendar_event', 'check_availability', 'cancel_calendar_event'].includes(t)
+  );
+  const usedSalesforce = toolsCalled.some(t => 
+    ['search_salesforce_contacts', 'get_contact_opportunities', 'get_sales_pipeline', 'get_high_value_accounts', 
+     'create_salesforce_task', 'create_salesforce_note', 'get_pipeline_value', 'update_opportunity_stage'].includes(t)
+  );
+
+  const truncateToken = (token?: string) => {
+    if (!token) return 'Not available';
+    return `${token.slice(0, 20)}...${token.slice(-10)}`;
   };
 
-  // Determine which steps are complete
-  const hasIdJag = !!xaaInfo?.id_jag_token;
-  const hasMcpToken = !!xaaInfo?.mcp_access_token;
-  const hasToolsExecuted = toolsCalled && toolsCalled.length > 0;
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  // Define all steps
+  const steps = [
+    {
+      step: 1,
+      title: 'Okta ID Token',
+      subtitle: 'Okta Authentication',
+      status: xaaInfo?.configured ? 'completed' : 'pending',
+      icon: '🔐',
+      color: 'blue',
+    },
+    {
+      step: 2,
+      title: 'ID-JAG Token',
+      subtitle: 'XAA Exchange (ID-JAG)',
+      status: xaaInfo?.token_obtained ? 'completed' : 'pending',
+      token: xaaInfo?.id_jag_token,
+      expiresIn: xaaInfo?.id_jag_expires_in,
+      icon: '🔑',
+      color: 'purple',
+    },
+    {
+      step: 3,
+      title: 'MCP Token',
+      subtitle: 'Auth Server Token',
+      status: xaaInfo?.mcp_token ? 'completed' : 'pending',
+      token: xaaInfo?.mcp_token,
+      expiresIn: xaaInfo?.mcp_token_expires_in,
+      scope: xaaInfo?.scope,
+      icon: '🎫',
+      color: 'green',
+    },
+    {
+      step: 4,
+      title: 'Auth0 Vault Token',
+      subtitle: 'Token Vault Exchange',
+      status: tokenVaultInfo?.vault_token ? 'completed' : 'pending',
+      token: tokenVaultInfo?.vault_token,
+      icon: '🏦',
+      color: 'amber',
+    },
+    {
+      step: 5,
+      title: 'Federated Token',
+      subtitle: usedSalesforce ? 'Salesforce Token' : 'Google Calendar Token',
+      status: (tokenVaultInfo?.google_token_obtained || tokenVaultInfo?.salesforce_token_obtained) ? 'completed' : 'pending',
+      token: usedSalesforce ? tokenVaultInfo?.salesforce_token : tokenVaultInfo?.google_token,
+      expiresIn: usedSalesforce ? tokenVaultInfo?.salesforce_expires_in : tokenVaultInfo?.google_expires_in,
+      icon: usedSalesforce ? '☁️' : '📅',
+      color: usedSalesforce ? 'sky' : 'rose',
+      connection: usedSalesforce ? 'salesforce' : 'google-oauth2',
+    },
+  ];
+
+  const getStatusColor = (status: string, color: string) => {
+    if (status === 'completed') {
+      return {
+        bg: `bg-${color}-500/20`,
+        border: `border-${color}-500/50`,
+        text: `text-${color}-400`,
+        dot: `bg-${color}-500`,
+      };
+    }
+    return {
+      bg: 'bg-slate-800/50',
+      border: 'border-slate-700',
+      text: 'text-slate-500',
+      dot: 'bg-slate-600',
+    };
+  };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-lg rounded-2xl border border-slate-700 w-full">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors rounded-t-2xl"
-      >
-        <div className="flex items-center space-x-2">
-          <div className={`w-2 h-2 ${hasMcpToken ? 'bg-green-500' : 'bg-amber-500'} rounded-full`}></div>
-          <span className="font-medium text-white">XAA Token Flow</span>
-          {hasMcpToken && (
-            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Active</span>
-          )}
+    <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🔐</span>
+          <h3 className="text-sm font-semibold text-white">Token Flow</h3>
         </div>
-        <svg
-          className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      
-      {isExpanded && (
-        <div className="px-4 pb-4 space-y-4">
-          {/* ID-JAG Flow Visualization */}
-          <div>
-            <h4 className="text-sm font-medium text-slate-300 mb-3">Cross-App Access Flow</h4>
-            <div className="bg-gradient-to-r from-blue-900/30 via-purple-900/30 to-green-900/30 rounded-lg p-4 border border-slate-600">
-              <div className="space-y-3">
-                {/* Backend Section */}
-                <div className="mb-3 pb-2 border-b border-slate-600">
-                  <p className="text-xs font-semibold text-amber-400">🔐 Backend API (Steps 1-3)</p>
-                </div>
+        <span className="text-xs text-slate-500">View decoded tokens at each step</span>
+      </div>
 
-                {/* Step 1: Exchange ID Token */}
-                <div className="flex items-center space-x-3">
-                  <div className={`flex-shrink-0 w-8 h-8 ${hasIdJag ? 'bg-blue-500' : 'bg-slate-600'} rounded-full flex items-center justify-center text-white text-xs font-bold`}>
-                    1
+      {/* Steps */}
+      <div className="p-3 space-y-2">
+        {steps.map((step, index) => {
+          const colors = getStatusColor(step.status, step.color);
+          const isExpanded = expandedStep === step.step;
+          
+          return (
+            <div key={step.step}>
+              {/* Step Header */}
+              <button
+                onClick={() => setExpandedStep(isExpanded ? null : step.step)}
+                className={`w-full px-3 py-2 rounded-lg border transition-all ${colors.bg} ${colors.border} hover:bg-slate-800/80`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {/* Step Number */}
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                      step.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {step.status === 'completed' ? '✓' : step.step}
+                    </div>
+                    
+                    {/* Step Info */}
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">Step {step.step}</span>
+                        <span className="text-xs text-slate-600">{step.subtitle}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>{step.icon}</span>
+                        <span className={`text-sm font-medium ${step.status === 'completed' ? 'text-white' : 'text-slate-400'}`}>
+                          {step.title}
+                        </span>
+                        {step.status === 'completed' && (
+                          <span className="text-xs text-green-400">✓ Obtained</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-slate-200">ID Token → ID-JAG</p>
-                    <p className="text-xs text-slate-400">Exchange user ID token for ID-JAG token</p>
-                  </div>
-                  {hasIdJag && (
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
+                  
+                  {/* Expand Icon */}
+                  <svg 
+                    className={`w-4 h-4 text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
+              </button>
 
-                {/* Arrow */}
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 w-8"></div>
-                  <div className={`flex-1 border-l-2 ${hasIdJag ? 'border-blue-400' : 'border-slate-600'} border-dashed h-4 ml-4`}></div>
+              {/* Expanded Token Details */}
+              {isExpanded && step.token && (
+                <div className="mt-2 ml-9 p-3 bg-slate-950 rounded-lg border border-slate-800">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Token</span>
+                      <button
+                        onClick={() => copyToClipboard(step.token!)}
+                        className="text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <code className="block text-xs text-slate-300 bg-slate-900 p-2 rounded font-mono break-all">
+                      {truncateToken(step.token)}
+                    </code>
+                    {step.expiresIn && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-slate-500">Expires in:</span>
+                        <span className="text-amber-400">{step.expiresIn}s</span>
+                      </div>
+                    )}
+                    {step.scope && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-slate-500">Scope:</span>
+                        <span className="text-green-400">{step.scope}</span>
+                      </div>
+                    )}
+                    {step.connection && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-slate-500">Connection:</span>
+                        <span className="text-purple-400">{step.connection}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
 
-                {/* Step 2: Verify ID-JAG */}
-                <div className="flex items-center space-x-3">
-                  <div className={`flex-shrink-0 w-8 h-8 ${hasIdJag ? 'bg-purple-500' : 'bg-slate-600'} rounded-full flex items-center justify-center text-white text-xs font-bold`}>
-                    2
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-slate-200">Verify ID-JAG</p>
-                    <p className="text-xs text-slate-400">Validate ID-JAG token (audit trail)</p>
-                  </div>
-                  {hasIdJag && (
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-
-                {/* Arrow */}
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 w-8"></div>
-                  <div className={`flex-1 border-l-2 ${hasMcpToken ? 'border-purple-400' : 'border-slate-600'} border-dashed h-4 ml-4`}></div>
-                </div>
-
-                {/* Step 3: Exchange for MCP Token */}
-                <div className="flex items-center space-x-3">
-                  <div className={`flex-shrink-0 w-8 h-8 ${hasMcpToken ? 'bg-indigo-500' : 'bg-slate-600'} rounded-full flex items-center justify-center text-white text-xs font-bold`}>
-                    3
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-slate-200">ID-JAG → MCP Token</p>
-                    <p className="text-xs text-slate-400">Exchange for auth server token</p>
-                  </div>
-                  {hasMcpToken && (
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-
-                {/* MCP Server Section */}
-                <div className="mt-4 pt-3 border-t border-slate-600">
-                  <p className="text-xs font-semibold text-green-400 mb-3">🖥️ MCP Server (Step 4)</p>
-                </div>
-
-                {/* Step 4: Validate Token & Execute */}
-                <div className="flex items-center space-x-3">
-                  <div className={`flex-shrink-0 w-8 h-8 ${hasToolsExecuted ? 'bg-green-500' : 'bg-slate-600'} rounded-full flex items-center justify-center text-white text-xs font-bold`}>
-                    4
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-slate-200">Validate & Execute</p>
-                    <p className="text-xs text-slate-400">
-                      {hasToolsExecuted
-                        ? `Verified. Tools: ${toolsCalled?.join(', ')}`
-                        : 'Verify MCP token before tool execution'}
-                    </p>
-                  </div>
-                  {hasToolsExecuted && (
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
+              {/* Connector Line */}
+              {index < steps.length - 1 && (
+                <div className="ml-6 h-2 border-l-2 border-dashed border-slate-700" />
+              )}
             </div>
+          );
+        })}
+      </div>
+
+      {/* Tools Called Summary */}
+      {toolsCalled.length > 0 && (
+        <div className="px-4 py-3 border-t border-slate-800 bg-slate-950/50">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-yellow-400">⚡</span>
+            <span className="text-xs font-medium text-slate-400">Tools Executed</span>
           </div>
-
-          {/* ID-JAG Token Display */}
-          {xaaInfo?.id_jag_token && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium text-slate-300">ID-JAG Token</h4>
-                <button
-                  onClick={() => copyToClipboard(xaaInfo.id_jag_token || '', 'id_jag')}
-                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-900/50 text-blue-300 rounded hover:bg-blue-800/50 transition-colors"
-                >
-                  {copiedField === 'id_jag' ? (
-                    <span className="text-green-400">Copied!</span>
-                  ) : (
-                    <span>Copy</span>
-                  )}
-                </button>
-              </div>
-              <div className="bg-blue-900/30 rounded-md p-3 border border-blue-700/50 font-mono text-xs break-all">
-                <p className="text-blue-300">
-                  {xaaInfo.id_jag_token.substring(0, 60)}...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* MCP Access Token Display */}
-          {xaaInfo?.mcp_access_token && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h4 className="text-sm font-medium text-slate-300">MCP Access Token</h4>
-                  <div className="flex space-x-3 mt-1">
-                    {xaaInfo.scope && (
-                      <p className="text-xs text-slate-400">Scope: <span className="text-amber-400">{xaaInfo.scope}</span></p>
-                    )}
-                    {xaaInfo.expires_in && (
-                      <p className="text-xs text-slate-400">Expires: <span className="text-amber-400">{xaaInfo.expires_in}s</span></p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => copyToClipboard(xaaInfo.mcp_access_token || '', 'mcp_token')}
-                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-900/50 text-green-300 rounded hover:bg-green-800/50 transition-colors"
-                >
-                  {copiedField === 'mcp_token' ? (
-                    <span className="text-green-400">Copied!</span>
-                  ) : (
-                    <span>Copy</span>
-                  )}
-                </button>
-              </div>
-              <div className="bg-green-900/30 rounded-md p-3 border border-green-700/50 font-mono text-xs break-all">
-                <p className="text-green-300">
-                  {xaaInfo.mcp_access_token.substring(0, 60)}...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Security Badge */}
-          <div className="bg-green-900/30 rounded-md p-3 border border-green-700/50 flex items-start space-x-2">
-            <svg className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-green-300">Okta Cross-App Access</p>
-              <p className="text-xs text-green-400/70">ID tokens never exposed to MCP. Short-lived scoped tokens only.</p>
-            </div>
+          <div className="flex flex-wrap gap-1">
+            {toolsCalled.map((tool, i) => (
+              <span 
+                key={i} 
+                className={`text-xs px-2 py-1 rounded-full ${
+                  tool.includes('salesforce') 
+                    ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                    : tool.includes('calendar') || tool.includes('availability')
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                }`}
+              >
+                {tool}
+              </span>
+            ))}
           </div>
         </div>
       )}
