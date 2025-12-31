@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import PromptLibrary from '@/components/PromptLibrary';
 import SecurityFlowTab from '@/components/SecurityFlowTab';
 import DemoGuideTab from '@/components/DemoGuideTab';
 
@@ -123,6 +124,7 @@ export default function ApexWealthAdvisor() {
   const [lastXAAInfo, setLastXAAInfo] = useState<any>(null);
   const [lastTokenVaultInfo, setLastTokenVaultInfo] = useState<any>(null);
   const [lastToolsCalled, setLastToolsCalled] = useState<string[]>([]);
+  const [showPromptLibrary, setShowPromptLibrary] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<'agent' | 'security' | 'guide'>('agent');
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -377,12 +379,20 @@ export default function ApexWealthAdvisor() {
             {/* Right Actions */}
             <div className="flex items-center space-x-4">
               {activeMainTab === 'agent' && (
-                <button
-                  onClick={handleNewChat}
-                  className="px-4 py-2 text-sm font-semibold bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
-                >
-                  + New Chat
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowPromptLibrary(true)}
+                    className="px-4 py-2 text-sm font-semibold bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-colors"
+                  >
+                    📚 Prompts
+                  </button>
+                  <button
+                    onClick={handleNewChat}
+                    className="px-4 py-2 text-sm font-semibold bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    + New Chat
+                  </button>
+                </>
               )}
               
               {/* Okta Branding */}
@@ -411,6 +421,16 @@ export default function ApexWealthAdvisor() {
           </div>
         </div>
       </header>
+
+      {/* Prompt Library Modal */}
+      <PromptLibrary
+        isOpen={showPromptLibrary}
+        onClose={() => setShowPromptLibrary(false)}
+        onSelectPrompt={(prompt) => {
+          setInput(prompt);
+          setShowPromptLibrary(false);
+        }}
+      />
 
       {/* Main Content - Tab Panels */}
       <main className="flex-1 overflow-hidden">
