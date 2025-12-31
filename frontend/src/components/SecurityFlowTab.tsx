@@ -616,7 +616,7 @@ function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaI
 }
 
 // Log Entry component for Logs view - expandable on double-click
-function LogEntry({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaInfo: any; tokenVaultInfo: any }) {
+function LogEntry({ entry, xaaInfo, tokenVaultInfo, session }: { entry: AuditEntry; xaaInfo: any; tokenVaultInfo: any; session?: any }) {
   const [expanded, setExpanded] = useState(false);
   
   const businessInfo = getBusinessInfo(entry.step);
@@ -624,6 +624,17 @@ function LogEntry({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaIn
   // Extract tool name and get metadata
   const toolName = entry.step.includes('Tool:') ? entry.step.replace('Tool: ', '').trim() : null;
   const toolMetadata = toolName ? getToolMetadata(toolName) : null;
+  
+  // Decode tokens to get identity info
+  const idJagDecoded = xaaInfo?.id_jag_token ? decodeJWT(xaaInfo.id_jag_token) : null;
+  const mcpDecoded = xaaInfo?.mcp_token ? decodeJWT(xaaInfo.mcp_token) : null;
+  const vaultDecoded = tokenVaultInfo?.vault_token ? decodeJWT(tokenVaultInfo.vault_token) : null;
+  
+  // Extract identity information
+  const userEmail = mcpDecoded?.sub || session?.user?.email || 'Unknown User';
+  const userId = idJagDecoded?.sub || mcpDecoded?.uid || 'Unknown';
+  const agentId = idJagDecoded?.client_id || xaaInfo?.agent_id || 'wlpt6vqrvo3HfiGZu1d7';
+  const federatedId = vaultDecoded?.sub || null;
   
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -670,6 +681,45 @@ function LogEntry({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaIn
       {expanded && (
         <div className={`pl-24 pr-3 pb-2 text-xs bg-slate-900/50 border-l-2 ${getBorderColor()}`}>
           <div className="py-2 space-y-2">
+            {/* Identity Context */}
+            <div className="bg-slate-800/70 rounded p-2 space-y-1">
+              <div className="text-[10px] font-medium text-slate-400 mb-1.5">Identity Chain</div>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="text-slate-500">👤 User:</span>
+                <span className="text-cyan-400">{userEmail}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="text-slate-500">🆔 User ID:</span>
+                <span className="text-slate-300 font-mono">{userId.length > 20 ? `${userId.substring(0, 20)}...` : userId}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="text-slate-500">🤖 Agent:</span>
+                <span className="text-amber-400 font-mono">{agentId}</span>
+              </div>
+              {federatedId && (
+                <div className="flex items-center gap-2 text-[10px]">
+                  <span className="text-slate-500">🔗 Federated:</span>
+                  <span className="text-purple-400 font-mono text-[9px]">{federatedId}</span>
+                </div>
+              )}
+              {/* Show delegation chain for tool calls */}
+              {toolMetadata && (
+                <div className="mt-1.5 pt-1.5 border-t border-slate-700">
+                  <div className="text-[9px] text-slate-500">
+                    Delegation: <span className="text-cyan-400">{userEmail}</span>
+                    <span className="text-slate-600"> → </span>
+                    <span className="text-amber-400">Agent</span>
+                    <span className="text-slate-600"> → </span>
+                    <span className={
+                      toolMetadata.backend === 'google-calendar' ? 'text-rose-400' :
+                      toolMetadata.backend === 'salesforce' ? 'text-sky-400' :
+                      'text-emerald-400'
+                    }>{toolMetadata.backendDisplay}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             {/* Tool details */}
             {toolMetadata && (
               <div className="bg-slate-800/50 rounded p-2 space-y-1">
@@ -901,7 +951,7 @@ export default function SecurityFlowTab({
               /* Logs View - Continuous flow like Render logs */
               <div className="font-mono text-xs">
                 {displayEvents.map((entry, index) => (
-                  <LogEntry key={entry.id} entry={entry} xaaInfo={xaaInfo} tokenVaultInfo={tokenVaultInfo} />
+                  <LogEntry key={entry.id} entry={entry} xaaInfo={xaaInfo} tokenVaultInfo={tokenVaultInfo} session={session} />
                 ))}
               </div>
             )}
