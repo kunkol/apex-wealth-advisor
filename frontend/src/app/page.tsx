@@ -293,7 +293,7 @@ export default function ApexWealthAdvisor() {
 
   // Main app
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
       {/* Header with tabs */}
       <header className="border-b border-slate-800 bg-slate-900">
         <div className="px-4 py-3">
@@ -340,6 +340,22 @@ export default function ApexWealthAdvisor() {
                 }`}
               >
                 <span>📖</span> Demo Guide
+              </button>
+              
+              {/* Prompts Button */}
+              <button
+                onClick={() => setShowPromptLibrary(true)}
+                className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+              >
+                <span>📋</span> Prompts
+              </button>
+              
+              {/* New Chat Button */}
+              <button
+                onClick={handleNewChat}
+                className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-700"
+              >
+                <span>+</span> New Chat
               </button>
             </div>
 
