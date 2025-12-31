@@ -78,7 +78,7 @@ const CATEGORIES: Category[] = [
       { id: '2.5', text: 'Which clients have opportunities over $500K?', description: 'High-value filter', securityDemo: 'SOQL query', accessPattern: 'token-vault-salesforce', ready: true },
       { id: '2.6', text: 'Create a follow-up task for Thompson next week', description: 'Create task', securityDemo: 'Write via Token Vault', accessPattern: 'token-vault-salesforce', ready: true },
       { id: '2.7', text: 'Add a note to Chen\'s account about Q2 strategy', description: 'Create note', securityDemo: 'Write operation', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.8', text: 'What\'s the total pipeline value?', description: 'Pipeline aggregation', securityDemo: 'Read aggregation', accessPattern: 'token-vault-salesforce', ready: true },
+      { id: '2.8', text: 'What\'s the total pipeline value?', description: 'Pipeline aggregation', securityDemo: 'Read aggregation', accessPattern: 'token-vault-salesforce', ready: false },
       { id: '2.9', text: 'Show contacts at Grand Hotels', description: 'Account contacts', securityDemo: 'Related records', accessPattern: 'token-vault-salesforce', ready: true },
       { id: '2.10', text: 'Update Rodriguez opportunity to Negotiation stage', description: 'Update opportunity', securityDemo: 'Write via Token Vault', accessPattern: 'token-vault-salesforce', ready: true },
     ]
