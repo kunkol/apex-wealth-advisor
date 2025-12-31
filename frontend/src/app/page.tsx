@@ -163,6 +163,7 @@ export default function ApexWealthAdvisor() {
             rawToken: data.token_vault_info.vault_token
           });
         }
+        // GOOGLE TOKEN - Add audit entry if present
         if (data.token_vault_info.google_token) {
           addAuditEntry({
             step: 'Google Calendar Token',
@@ -171,10 +172,19 @@ export default function ApexWealthAdvisor() {
             rawToken: data.token_vault_info.google_token
           });
         }
+        // SALESFORCE TOKEN - Add audit entry if present (NEW!)
+        if (data.token_vault_info.salesforce_token) {
+          addAuditEntry({
+            step: 'Salesforce Token',
+            status: 'success',
+            details: { tokenType: 'Salesforce Access Token', connection: 'salesforce', expiresIn: data.token_vault_info.salesforce_expires_in },
+            rawToken: data.token_vault_info.salesforce_token
+          });
+        }
       }
       
       if (data.tools_called?.length > 0) {
-        setLastToolsCalled(prev => [...new Set([...prev, ...data.tools_called])]);
+        setLastToolsCalled(data.tools_called); // Replace instead of append for current request
         data.tools_called.forEach((tool: string) => {
           addAuditEntry({
             step: `Tool: ${tool}`,
@@ -250,17 +260,30 @@ export default function ApexWealthAdvisor() {
 
               <button
                 onClick={() => signIn('okta')}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-bold py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3"
+                className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 rounded-xl font-semibold hover:from-amber-600 hover:to-amber-700 transition-all flex items-center justify-center gap-3"
               >
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.389 0 0 5.389 0 12s5.389 12 12 12 12-5.389 12-12S18.611 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.8a7.2 7.2 0 110 14.4 7.2 7.2 0 010-14.4z"/>
                 </svg>
                 Sign in with Okta
               </button>
 
-              <p className="text-xs text-slate-600 mt-6">
-                Secured by Okta Identity Cloud
-              </p>
+              <div className="mt-8 pt-8 border-t border-slate-800">
+                <div className="flex items-center justify-center gap-6 text-sm text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Enterprise SSO
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    MFA Protected
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -268,14 +291,14 @@ export default function ApexWealthAdvisor() {
     );
   }
 
-  // Main Application with Tabs
+  // Main app
   return (
-    <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900 flex-shrink-0">
+    <div className="min-h-screen bg-slate-950 flex flex-col">
+      {/* Header with tabs */}
+      <header className="border-b border-slate-800 bg-slate-900">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Left - Logo & Title */}
+            {/* Logo and Title */}
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center">
                 <span className="text-lg font-bold text-slate-900">AW</span>
@@ -285,51 +308,46 @@ export default function ApexWealthAdvisor() {
                 <p className="text-xs text-slate-500">AI Agent Security Demo</p>
               </div>
             </div>
-
-            {/* Center - Main Tabs */}
-            <div className="flex items-center space-x-1 bg-slate-800 rounded-xl p-1">
-              {[
-                { id: 'agent', label: '🤖 Agent' },
-                { id: 'security', label: '🔐 Security Flow' },
-                { id: 'guide', label: '📖 Demo Guide' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveMainTab(tab.id as 'agent' | 'security' | 'guide')}
-                  className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-                    activeMainTab === tab.id
-                      ? 'bg-amber-500 text-slate-900'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+              <button
+                onClick={() => setActiveMainTab('agent')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                  activeMainTab === 'agent' 
+                    ? 'bg-slate-700 text-white' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🤖</span> Agent
+              </button>
+              <button
+                onClick={() => setActiveMainTab('security')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                  activeMainTab === 'security' 
+                    ? 'bg-slate-700 text-white' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🔐</span> Security Flow
+              </button>
+              <button
+                onClick={() => setActiveMainTab('guide')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                  activeMainTab === 'guide' 
+                    ? 'bg-slate-700 text-white' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>📖</span> Demo Guide
+              </button>
             </div>
 
-            {/* Right Actions */}
-            <div className="flex items-center space-x-3">
-              {activeMainTab === 'agent' && (
-                <>
-                  <button
-                    onClick={() => setShowPromptLibrary(true)}
-                    className="px-4 py-2 text-sm font-semibold bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-colors"
-                  >
-                    📚 Prompts
-                  </button>
-                  <button
-                    onClick={handleNewChat}
-                    className="px-4 py-2 text-sm font-semibold bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
-                  >
-                    + New Chat
-                  </button>
-                </>
-              )}
-              
-              {/* Okta Branding */}
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/30 border border-blue-500/30 rounded-lg">
-                <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.389 0 0 5.389 0 12s5.389 12 12 12 12-5.389 12-12S18.611 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/>
+            {/* Right side */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
                 <span className="text-xs font-medium text-blue-400">Secured by Okta for AI Agents</span>
               </div>
@@ -390,7 +408,16 @@ export default function ApexWealthAdvisor() {
                             {msg.toolsCalled && msg.toolsCalled.length > 0 && (
                               <div className="mt-3 pt-3 border-t border-slate-700 flex flex-wrap gap-1">
                                 {msg.toolsCalled.map((tool, i) => (
-                                  <span key={i} className="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded">
+                                  <span 
+                                    key={i} 
+                                    className={`text-xs px-2 py-0.5 rounded ${
+                                      tool.includes('salesforce') 
+                                        ? 'bg-sky-900 text-sky-300'
+                                        : tool.includes('calendar') || tool.includes('availability')
+                                        ? 'bg-rose-900 text-rose-300'
+                                        : 'bg-green-900 text-green-300'
+                                    }`}
+                                  >
                                     ✓ {tool}
                                   </span>
                                 ))}
@@ -479,8 +506,16 @@ export default function ApexWealthAdvisor() {
                   {/* XAA Flow Card */}
                   <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
                   
-                  {/* Token Vault Flow Card */}
-                  <TokenVaultFlow tokenVaultInfo={lastTokenVaultInfo} isActive={lastToolsCalled.some(t => t.includes('calendar'))} />
+                  {/* Token Vault Flow Card - Updated to handle both Google and Salesforce */}
+                  <TokenVaultFlow 
+                    tokenVaultInfo={lastTokenVaultInfo} 
+                    isActive={lastToolsCalled.some(t => 
+                      t.includes('calendar') || 
+                      t.includes('availability') || 
+                      t.includes('salesforce')
+                    )}
+                    toolsCalled={lastToolsCalled}
+                  />
                   
                   {/* MCP Tools Card */}
                   <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
@@ -498,7 +533,7 @@ export default function ApexWealthAdvisor() {
           </div>
         )}
 
-        {/* TAB 2: Security Flow - Pass BOTH arrays */}
+        {/* TAB 2: Security Flow - Pass BOTH arrays and toolsCalled */}
         {activeMainTab === 'security' && (
           <SecurityFlowTab 
             session={session}
@@ -506,6 +541,7 @@ export default function ApexWealthAdvisor() {
             sessionAuditLog={sessionAuditLog}
             xaaInfo={lastXAAInfo}
             tokenVaultInfo={lastTokenVaultInfo}
+            toolsCalled={lastToolsCalled}
           />
         )}
 

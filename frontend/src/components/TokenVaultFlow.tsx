@@ -1,187 +1,151 @@
-/**
- * TokenVaultFlow.tsx
- * Visualizes the Token Vault flow for Google Calendar access
- * Shows: Okta Token → Auth0 Vault Token → Google Token → Calendar API
- */
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
-
-interface FlowStep {
-  step: number;
-  name: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-  duration_ms?: number;
-  details?: Record<string, any>;
-  error?: string;
-}
+import { useState } from 'react';
 
 interface TokenVaultFlowProps {
-  tokenVaultInfo?: {
-    configured: boolean;
-    google_token_obtained: boolean;
-    connection: string;
-  };
-  isActive?: boolean;
+  tokenVaultInfo: any;
+  isActive: boolean;
+  toolsCalled?: string[];
 }
 
-export default function TokenVaultFlow({ tokenVaultInfo, isActive }: TokenVaultFlowProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
+// Helper to detect which tools use which backend
+const CALENDAR_TOOLS = ['list_calendar_events', 'get_calendar_event', 'create_calendar_event', 'check_availability', 'cancel_calendar_event'];
+const SALESFORCE_TOOLS = ['search_salesforce_contacts', 'get_contact_opportunities', 'get_sales_pipeline', 'get_high_value_accounts', 'create_salesforce_task', 'create_salesforce_note', 'get_pipeline_value', 'update_opportunity_stage'];
 
-  useEffect(() => {
-    if (tokenVaultInfo?.google_token_obtained) {
-      // Show completed flow
-      setFlowSteps([
-        { step: 1, name: 'Okta Access Token', status: 'completed', details: { source: 'User Session' } },
-        { step: 2, name: 'Auth0 Token Exchange', status: 'completed', details: { grant: 'token-exchange' } },
-        { step: 3, name: 'Vault Token', status: 'completed', details: { audience: 'Token Vault API' } },
-        { step: 4, name: 'Google Token', status: 'completed', details: { connection: 'google-oauth2' } },
-        { step: 5, name: 'Calendar API', status: 'completed', details: { api: 'googleapis.com' } },
-      ]);
-    } else if (isActive) {
-      // Show pending flow
-      setFlowSteps([
-        { step: 1, name: 'Okta Access Token', status: 'pending' },
-        { step: 2, name: 'Auth0 Token Exchange', status: 'pending' },
-        { step: 3, name: 'Vault Token', status: 'pending' },
-        { step: 4, name: 'Google Token', status: 'pending' },
-        { step: 5, name: 'Calendar API', status: 'pending' },
-      ]);
-    }
-  }, [tokenVaultInfo, isActive]);
+export default function TokenVaultFlow({ tokenVaultInfo, isActive, toolsCalled = [] }: TokenVaultFlowProps) {
+  const [expanded, setExpanded] = useState(false);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return (
-          <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        );
-      case 'failed':
-        return (
-          <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-        );
-      case 'in_progress':
-        return (
-          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center animate-pulse">
-            <div className="w-3 h-3 rounded-full bg-white" />
-          </div>
-        );
-      default:
-        return <div className="w-6 h-6 rounded-full bg-gray-600 border-2 border-gray-500" />;
-    }
+  // Determine which tokens were used
+  const usedCalendar = toolsCalled.some(t => CALENDAR_TOOLS.includes(t));
+  const usedSalesforce = toolsCalled.some(t => SALESFORCE_TOOLS.includes(t));
+  
+  const hasGoogleToken = tokenVaultInfo?.google_token;
+  const hasSalesforceToken = tokenVaultInfo?.salesforce_token;
+  const hasVaultToken = tokenVaultInfo?.vault_token;
+
+  const truncateToken = (token: string) => {
+    if (!token) return 'Not available';
+    return `${token.slice(0, 15)}...${token.slice(-8)}`;
   };
 
-  const getStepBg = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-900/30 border-green-700';
-      case 'failed': return 'bg-red-900/30 border-red-700';
-      case 'in_progress': return 'bg-blue-900/30 border-blue-700';
-      default: return 'bg-gray-800/50 border-gray-700';
-    }
+  // Determine the title based on what was used
+  const getTitle = () => {
+    if (usedSalesforce && usedCalendar) return 'Token Vault (Multi)';
+    if (usedSalesforce) return 'Token Vault (Salesforce)';
+    if (usedCalendar) return 'Token Vault (Calendar)';
+    return 'Token Vault';
   };
 
-  if (!tokenVaultInfo?.configured && !isActive) {
-    return null;
-  }
+  // Determine the icon
+  const getIcon = () => {
+    if (usedSalesforce && usedCalendar) return '🔄';
+    if (usedSalesforce) return '☁️';
+    if (usedCalendar) return '📅';
+    return '🏦';
+  };
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden transition-all ${
+      isActive 
+        ? usedSalesforce 
+          ? 'border-sky-500/50 bg-sky-900/20' 
+          : 'border-rose-500/50 bg-rose-900/20'
+        : 'border-slate-700 bg-slate-800/50'
+    }`}>
       {/* Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between bg-gradient-to-r from-purple-900/50 to-indigo-900/50 hover:from-purple-900/70 hover:to-indigo-900/70 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-800/50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          <span className="font-semibold text-white">Token Vault Flow</span>
-          {tokenVaultInfo?.google_token_obtained && (
-            <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Active</span>
-          )}
+          <span className="text-lg">{getIcon()}</span>
+          <div className="text-left">
+            <p className="text-sm font-medium text-white">{getTitle()}</p>
+            <p className="text-[10px] text-slate-500">Auth0 Federated Access</p>
+          </div>
         </div>
-        <svg 
-          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <div className="flex items-center gap-2">
+          {isActive ? (
+            <span className={`text-xs px-2 py-0.5 rounded ${
+              usedSalesforce ? 'bg-sky-500/20 text-sky-400' : 'bg-rose-500/20 text-rose-400'
+            }`}>
+              ✓ Active
+            </span>
+          ) : hasVaultToken ? (
+            <span className="text-xs text-green-400">✓ Ready</span>
+          ) : (
+            <span className="text-xs text-slate-500">Pending</span>
+          )}
+          <svg className={`w-4 h-4 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </button>
 
-      {isExpanded && (
-        <div className="p-4 space-y-3">
-          {/* Flow Steps */}
-          {flowSteps.length > 0 ? (
-            <div className="space-y-2">
-              {flowSteps.map((step, index) => (
-                <div key={step.step}>
-                  <div className={`p-3 rounded-lg border ${getStepBg(step.status)} transition-all`}>
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(step.status)}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Step {step.step}</span>
-                          <span className="font-medium text-white">{step.name}</span>
-                        </div>
-                        {step.details && (
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {Object.entries(step.details).map(([key, value]) => (
-                              <span key={key} className="mr-2">{key}: {String(value)}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {/* Connector */}
-                  {index < flowSteps.length - 1 && (
-                    <div className="flex justify-center py-1">
-                      <div className={`w-0.5 h-3 ${step.status === 'completed' ? 'bg-green-600' : 'bg-gray-600'}`} />
-                    </div>
-                  )}
-                </div>
-              ))}
+      {/* Expanded Details */}
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-slate-700 space-y-2">
+          {/* Vault Token */}
+          <div className="mt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">Vault Token</span>
+              {hasVaultToken && <span className="text-xs text-green-400">✓</span>}
             </div>
-          ) : (
-            /* Legend when no flow active */
-            <div className="text-sm text-gray-400 space-y-2">
-              <p className="text-xs text-gray-500 uppercase font-medium">Token Exchange Flow</p>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono bg-gray-700 px-1.5 py-0.5 rounded text-xs">1</span>
-                  <span>Okta Access Token from user session</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono bg-gray-700 px-1.5 py-0.5 rounded text-xs">2</span>
-                  <span>Exchange for Auth0 Vault token</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono bg-gray-700 px-1.5 py-0.5 rounded text-xs">3</span>
-                  <span>Get Google token from vault</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono bg-gray-700 px-1.5 py-0.5 rounded text-xs">4</span>
-                  <span>Access Google Calendar API</span>
-                </div>
+            <code className="text-[10px] text-slate-400 font-mono">
+              {truncateToken(tokenVaultInfo?.vault_token)}
+            </code>
+          </div>
+
+          {/* Google Token - Show if calendar tools used or token exists */}
+          {(usedCalendar || hasGoogleToken) && (
+            <div className="p-2 rounded bg-rose-900/20 border border-rose-500/30">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-rose-400 flex items-center gap-1">
+                  📅 Google Calendar
+                </span>
+                {hasGoogleToken && <span className="text-xs text-green-400">✓</span>}
               </div>
+              <code className="text-[10px] text-slate-400 font-mono">
+                {truncateToken(tokenVaultInfo?.google_token)}
+              </code>
+              {tokenVaultInfo?.google_expires_in && (
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Expires: {tokenVaultInfo.google_expires_in}s
+                </p>
+              )}
             </div>
           )}
 
-          {/* Status */}
-          <div className="pt-2 border-t border-gray-700">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Auth0 Domain</span>
-              <span className="text-gray-300">{tokenVaultInfo?.connection || 'google-oauth2'}</span>
+          {/* Salesforce Token - Show if salesforce tools used or token exists */}
+          {(usedSalesforce || hasSalesforceToken) && (
+            <div className="p-2 rounded bg-sky-900/20 border border-sky-500/30">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-sky-400 flex items-center gap-1">
+                  ☁️ Salesforce CRM
+                </span>
+                {hasSalesforceToken && <span className="text-xs text-green-400">✓</span>}
+              </div>
+              <code className="text-[10px] text-slate-400 font-mono">
+                {truncateToken(tokenVaultInfo?.salesforce_token)}
+              </code>
+              {tokenVaultInfo?.salesforce_expires_in && (
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Expires: {tokenVaultInfo.salesforce_expires_in}s
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Connection Info */}
+          <div className="pt-2 border-t border-slate-700">
+            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+              <span>Connection:</span>
+              {(usedCalendar || hasGoogleToken) && (
+                <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded">google-oauth2</span>
+              )}
+              {(usedSalesforce || hasSalesforceToken) && (
+                <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded">salesforce</span>
+              )}
             </div>
           </div>
         </div>
