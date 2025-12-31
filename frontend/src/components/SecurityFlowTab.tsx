@@ -19,7 +19,8 @@ interface AuditEntry {
 
 interface SecurityFlowTabProps {
   session: any;
-  auditTrail: AuditEntry[];
+  currentRequestEvents: AuditEntry[];  // Cards show THIS (current request only)
+  sessionAuditLog: AuditEntry[];       // Logs show THIS (cumulative)
   xaaInfo: any;
   tokenVaultInfo: any;
 }
@@ -187,8 +188,15 @@ function TokenCard({ title, token, color, stepNumber }: { title: string; token?:
   );
 }
 
-// Security gap info
-const SECURITY_GAPS = {
+// Security gap info for audit entries
+const SECURITY_GAPS: Record<string, {
+  label: string;
+  color: string;
+  icon: string;
+  description: string;
+  checkmarks: string[];
+  comparison: { good: string; bad: string };
+}> = {
   'user-request': {
     label: 'User Action',
     color: 'blue',
@@ -250,7 +258,8 @@ function getStepType(step: string): keyof typeof SECURITY_GAPS {
   return 'user-request';
 }
 
-function EnhancedAuditEntry({ entry }: { entry: AuditEntry }) {
+// Single Audit Card with its own expand state
+function AuditCard({ entry }: { entry: AuditEntry }) {
   const [expanded, setExpanded] = useState(false);
   const stepType = getStepType(entry.step);
   const gapInfo = SECURITY_GAPS[stepType];
@@ -270,11 +279,11 @@ function EnhancedAuditEntry({ entry }: { entry: AuditEntry }) {
     <div className={`rounded-xl border ${colors.border} ${colors.bg} overflow-hidden`}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
           <span className="text-xl">{gapInfo.icon}</span>
-          <div className="text-left">
+          <div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-white text-sm">{entry.step}</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${colors.badge}`}>{gapInfo.label}</span>
@@ -333,26 +342,28 @@ function EnhancedAuditEntry({ entry }: { entry: AuditEntry }) {
   );
 }
 
-// Log format entry
+// Log format entry (simple, no expand)
 function LogEntry({ entry }: { entry: AuditEntry }) {
   const stepType = getStepType(entry.step);
   const gapInfo = SECURITY_GAPS[stepType];
   const timestamp = new Date(entry.timestamp).toISOString();
   
+  const statusColor = entry.status === 'success' ? 'text-green-400' : entry.status === 'error' ? 'text-red-400' : 'text-amber-400';
+  const borderColor = entry.status === 'success' ? 'border-green-500' : entry.status === 'error' ? 'border-red-500' : 'border-amber-500';
+  
   return (
-    <div className="font-mono text-xs border-l-2 border-green-500 pl-3 py-1">
+    <div className={`font-mono text-xs border-l-2 ${borderColor} pl-3 py-1.5`}>
       <span className="text-slate-500">[{timestamp}]</span>{' '}
-      <span className="text-green-400">{entry.status.toUpperCase()}</span>{' '}
+      <span className={statusColor}>{entry.status.toUpperCase()}</span>{' '}
       <span className="text-white">{entry.step}</span>
       {entry.details?.tokenType && <span className="text-slate-400"> type={entry.details.tokenType}</span>}
       {entry.details?.expiresIn && <span className="text-slate-400"> ttl={entry.details.expiresIn}s</span>}
       {entry.details?.connection && <span className="text-purple-400"> connection={entry.details.connection}</span>}
-      <span className="text-cyan-400"> gaps_solved=[{gapInfo.checkmarks.length}]</span>
     </div>
   );
 }
 
-export default function SecurityFlowTab({ session, auditTrail, xaaInfo, tokenVaultInfo }: SecurityFlowTabProps) {
+export default function SecurityFlowTab({ session, currentRequestEvents, sessionAuditLog, xaaInfo, tokenVaultInfo }: SecurityFlowTabProps) {
   const idToken = (session as any)?.idToken || '';
   const [viewMode, setViewMode] = useState<'cards' | 'logs'>('cards');
   
@@ -410,30 +421,36 @@ export default function SecurityFlowTab({ session, auditTrail, xaaInfo, tokenVau
           </div>
         </div>
 
-        {/* RIGHT: Audit Trail with View Toggle */}
+        {/* RIGHT: Audit Trail with Cards vs Logs toggle */}
         <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">📋 Audit Trail</h2>
-              <p className="text-xs text-slate-500">Security events with gap analysis</p>
+              <p className="text-xs text-slate-500">
+                {viewMode === 'cards' ? 'Current request events' : 'All session events'}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              {auditTrail.length > 0 && (
-                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
-                  {auditTrail.length} events
+            <div className="flex items-center gap-3">
+              {/* Event count */}
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium">
+                  {currentRequestEvents.length} current
                 </span>
-              )}
+                <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
+                  {sessionAuditLog.length} total
+                </span>
+              </div>
               {/* View Toggle */}
               <div className="flex bg-slate-800 rounded-lg p-0.5">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`px-2 py-1 text-xs rounded ${viewMode === 'cards' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded ${viewMode === 'cards' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                   Cards
                 </button>
                 <button
                   onClick={() => setViewMode('logs')}
-                  className={`px-2 py-1 text-xs rounded ${viewMode === 'logs' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded ${viewMode === 'logs' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
                 >
                   Logs
                 </button>
@@ -442,40 +459,49 @@ export default function SecurityFlowTab({ session, auditTrail, xaaInfo, tokenVau
           </div>
           
           <div className="flex-1 overflow-y-auto p-4">
-            {auditTrail.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 bg-slate-800 rounded-2xl flex items-center justify-center">
-                  <span className="text-2xl">📋</span>
-                </div>
-                <p className="text-slate-400 text-sm mb-2">No events yet</p>
-                <p className="text-slate-600 text-xs mb-6">Make a request in the Agent tab to see the security flow</p>
-                
-                <div className="text-left p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                  <p className="text-xs font-semibold text-slate-400 mb-3">What you'll see:</p>
-                  <div className="space-y-2 text-xs text-slate-500">
-                    <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>Security checkmarks per step</span></div>
-                    <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>User-Delegated vs Workload comparison</span></div>
-                    <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>Token details (TTL, scope, audience)</span></div>
-                    <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>Log format view option</span></div>
+            {viewMode === 'cards' ? (
+              // CARDS VIEW: Show current request events only
+              currentRequestEvents.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-slate-800 rounded-2xl flex items-center justify-center">
+                    <span className="text-2xl">📋</span>
+                  </div>
+                  <p className="text-slate-400 text-sm mb-2">No events yet</p>
+                  <p className="text-slate-600 text-xs mb-6">Make a request in the Agent tab to see security events</p>
+                  
+                  <div className="text-left p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                    <p className="text-xs font-semibold text-slate-400 mb-3">What you'll see:</p>
+                    <div className="space-y-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>Security checkmarks per step</span></div>
+                      <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>User-Delegated vs Workload comparison</span></div>
+                      <div className="flex items-center gap-2"><span className="text-green-400">✓</span><span>Token details (TTL, scope, audience)</span></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : viewMode === 'cards' ? (
-              <div className="space-y-3">
-                {auditTrail.map((entry) => (
-                  <EnhancedAuditEntry key={entry.id} entry={entry} />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-slate-900 rounded-lg p-3 space-y-1">
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                  <span className="text-xs font-mono text-slate-400"># Security Audit Log</span>
-                  <span className="text-xs text-slate-500">{auditTrail.length} entries</span>
+              ) : (
+                <div className="space-y-3">
+                  {currentRequestEvents.map((entry) => (
+                    <AuditCard key={entry.id} entry={entry} />
+                  ))}
                 </div>
-                {auditTrail.map((entry) => (
-                  <LogEntry key={entry.id} entry={entry} />
-                ))}
-              </div>
+              )
+            ) : (
+              // LOGS VIEW: Show all session events (cumulative)
+              sessionAuditLog.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-slate-500 text-sm">No events in session log yet</p>
+                </div>
+              ) : (
+                <div className="bg-slate-900 rounded-lg p-3 space-y-0.5">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                    <span className="text-xs font-mono text-slate-400"># Security Audit Log - Session</span>
+                    <span className="text-xs text-slate-500">{sessionAuditLog.length} entries</span>
+                  </div>
+                  {sessionAuditLog.map((entry) => (
+                    <LogEntry key={entry.id} entry={entry} />
+                  ))}
+                </div>
+              )
             )}
           </div>
           
