@@ -5,7 +5,7 @@ FastAPI backend with Claude AI, Okta XAA, and Auth0 Token Vault integration.
 Architecture:
 - Internal MCP (Portfolio): Okta XAA (ID-JAG token exchange)
 - Google Calendar: Auth0 Token Vault
-- Salesforce CRM: Auth0 Token Vault (Phase 2)
+- Salesforce CRM: Auth0 Token Vault
 """
 
 from fastapi import FastAPI, HTTPException, Request
@@ -51,6 +51,7 @@ app = FastAPI(
 frontend_origins = [
     os.getenv("FRONTEND_URL", "http://localhost:3000"),
     "https://apex-wealth-app.vercel.app",
+    "https://apex-wealth-advisor.vercel.app",
     "https://okta-ai-agent-demo.vercel.app"
 ]
 # Add any additional origins from env
@@ -127,7 +128,7 @@ async def root():
         "security_flows": {
             "internal_mcp": "Okta XAA (ID-JAG)",
             "google_calendar": "Auth0 Token Vault",
-            "salesforce": "Auth0 Token Vault (Phase 2)"
+            "salesforce": "Auth0 Token Vault"
         }
     }
 
@@ -142,6 +143,7 @@ async def health():
             "auth0_token_vault": token_vault.is_configured(),
             "internal_mcp": True,
             "google_calendar": True,
+            "salesforce": True,
             "claude": claude_service.client is not None
         }
     }
@@ -155,7 +157,7 @@ async def chat(request: ChatRequest, http_request: Request):
     Security Flow:
     1. Validate user's ID token
     2. Exchange ID token for MCP token (Okta XAA) for internal tools
-    3. Exchange for Auth0 vault token, then get Google token (Token Vault) for calendar
+    3. Exchange for Auth0 vault token, then get Google/Salesforce tokens (Token Vault)
     4. Route tool calls to appropriate backend
     """
     try:
@@ -184,17 +186,27 @@ async def chat(request: ChatRequest, http_request: Request):
                 logger.info(f"[CHAT] XAA: MCP token obtained, expires_in={mcp_token_info.get('expires_in')}s")
         
         # ================================================================
-        # STEP 3: Auth0 Token Vault - Get Google token for calendar
+        # STEP 3: Auth0 Token Vault - Get external tokens
         # ================================================================
+        vault_token = None
         google_token_info = None
+        salesforce_token_info = None
+        
         if access_token and token_vault.is_configured():
             # First exchange Okta token for Auth0 vault token
-            vault_token = await token_vault.exchange_okta_token_for_vault_token(mcp_token_info.get("access_token") if mcp_token_info else access_token)
+            vault_token = await token_vault.exchange_okta_token_for_vault_token(
+                mcp_token_info.get("access_token") if mcp_token_info else access_token
+            )
             if vault_token:
-                # Then get Google token from vault
+                # Get Google token from vault
                 google_token_info = await token_vault.get_google_token(vault_token)
                 if google_token_info:
                     logger.info(f"[CHAT] Token Vault: Google token obtained")
+                
+                # Get Salesforce token from vault
+                salesforce_token_info = await token_vault.get_salesforce_token(vault_token)
+                if salesforce_token_info:
+                    logger.info(f"[CHAT] Token Vault: Salesforce token obtained")
         
         # ================================================================
         # STEP 4: Process through Claude with tools
@@ -208,7 +220,8 @@ async def chat(request: ChatRequest, http_request: Request):
             mcp_token=mcp_token_info.get("access_token") if mcp_token_info else None,
             mcp_server=wealth_mcp,
             calendar_tools=calendar_tools,
-            google_token=google_token_info.get("access_token") if google_token_info else None
+            google_token=google_token_info.get("access_token") if google_token_info else None,
+            salesforce_token=salesforce_token_info.get("access_token") if salesforce_token_info else None
         )
         
         # ================================================================
@@ -230,12 +243,20 @@ async def chat(request: ChatRequest, http_request: Request):
             } if mcp_token_info or xaa_manager.is_configured() else None,
             token_vault_info={
                 "configured": token_vault.is_configured(),
-                "google_token_obtained": bool(google_token_info),
                 "vault_token": vault_token if vault_token else None,
-                "google_token": google_token_info.get("access_token") if google_token_info else None,
-                "google_expires_in": google_token_info.get("expires_in") if google_token_info else None,
-                "connection": "google-oauth2"
-            } if google_token_info or token_vault.is_configured() else None
+                "google": {
+                    "connected": bool(google_token_info),
+                    "token": google_token_info.get("access_token") if google_token_info else None,
+                    "expires_in": google_token_info.get("expires_in") if google_token_info else None,
+                    "connection": "google-oauth2"
+                } if google_token_info else None,
+                "salesforce": {
+                    "connected": bool(salesforce_token_info),
+                    "token": salesforce_token_info.get("access_token") if salesforce_token_info else None,
+                    "expires_in": salesforce_token_info.get("expires_in") if salesforce_token_info else None,
+                    "connection": "salesforce"
+                } if salesforce_token_info else None
+            } if vault_token or token_vault.is_configured() else None
         )
         
     except Exception as e:
@@ -260,7 +281,14 @@ async def list_tools():
             "tools": cal_tools,
             "count": len(cal_tools)
         },
-        "total_tools": len(mcp_tools) + len(cal_tools)
+        "salesforce": {
+            "security": "Auth0 Token Vault",
+            "tools": ["search_salesforce_contacts", "get_contact_opportunities", "get_sales_pipeline", 
+                     "get_high_value_accounts", "create_salesforce_task", "create_salesforce_note",
+                     "get_pipeline_value", "update_opportunity_stage"],
+            "count": 8
+        },
+        "total_tools": len(mcp_tools) + len(cal_tools) + 8
     }
 
 
@@ -301,7 +329,7 @@ async def security_status():
         "auth0_token_vault": {
             "configured": token_vault.is_configured(),
             "domain": os.getenv("AUTH0_DOMAIN", "not set"),
-            "connections": ["google-oauth2", "salesforce (Phase 2)"],
+            "connections": ["google-oauth2", "salesforce"],
             "description": "Secure token storage for external SaaS APIs"
         }
     }

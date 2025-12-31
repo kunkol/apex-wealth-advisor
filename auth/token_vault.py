@@ -228,26 +228,18 @@ class TokenVaultClient:
         # Step 2: Get Google token (Step 1 should already be done)
         return await self.get_connection_token("google-oauth2", vault_token)
     
-    async def get_salesforce_token(self, okta_token: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def get_salesforce_token(self, vault_token: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
-        Convenience method: Get Salesforce access token (combines both steps)
+        Step 2 only: Get Salesforce access token using vault token
         
         Args:
-            okta_token: Okta access token. If provided, performs full 2-step exchange.
-                       If not provided, uses cached vault token.
+            vault_token: Auth0 Vault token from Step 1. If not provided, uses cached token.
         
         Returns:
             Dict with Salesforce access_token and metadata
         """
-        # Step 1: Get vault token if okta_token provided
-        if okta_token:
-            vault_token = await self.exchange_okta_token_for_vault_token(okta_token)
-            if not vault_token:
-                logger.error("[TokenVault] Failed to get Salesforce token - Step 1 failed")
-                return None
-        
-        # Step 2: Get Salesforce token
-        return await self.get_connection_token("salesforce")
+        # Step 2: Get Salesforce token (Step 1 should already be done)
+        return await self.get_connection_token("salesforce", vault_token)
     
     def clear_cache(self):
         """Clear cached vault token"""
