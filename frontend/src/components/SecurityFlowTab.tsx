@@ -13,6 +13,8 @@ interface AuditEntry {
     expiresIn?: number;
     scopes?: string[];
     connection?: string;
+    toolResult?: any; // Tool execution result data
+    recordCount?: number; // Number of records fetched
   };
   rawToken?: string;
 }
@@ -24,6 +26,240 @@ interface SecurityFlowTabProps {
   xaaInfo: any;
   tokenVaultInfo: any;
   toolsCalled?: string[];
+}
+
+// Comprehensive tool metadata
+interface ToolMetadata {
+  name: string;
+  displayName: string;
+  backend: 'internal-mcp' | 'google-calendar' | 'salesforce' | 'external-mcp';
+  backendDisplay: string;
+  apiName: string;
+  apiEndpoint?: string;
+  dataAccessed: string;
+  icon: string;
+  color: string;
+}
+
+const TOOL_METADATA: Record<string, ToolMetadata> = {
+  // Google Calendar Tools
+  'list_calendar_events': {
+    name: 'list_calendar_events',
+    displayName: 'List Calendar Events',
+    backend: 'google-calendar',
+    backendDisplay: 'Google Calendar API',
+    apiName: 'Google Calendar API v3',
+    apiEndpoint: 'calendar.events.list',
+    dataAccessed: 'Calendar events, meeting times, attendees',
+    icon: '📅',
+    color: 'rose'
+  },
+  'get_calendar_event': {
+    name: 'get_calendar_event',
+    displayName: 'Get Calendar Event',
+    backend: 'google-calendar',
+    backendDisplay: 'Google Calendar API',
+    apiName: 'Google Calendar API v3',
+    apiEndpoint: 'calendar.events.get',
+    dataAccessed: 'Event details, description, location',
+    icon: '📅',
+    color: 'rose'
+  },
+  'create_calendar_event': {
+    name: 'create_calendar_event',
+    displayName: 'Create Calendar Event',
+    backend: 'google-calendar',
+    backendDisplay: 'Google Calendar API',
+    apiName: 'Google Calendar API v3',
+    apiEndpoint: 'calendar.events.insert',
+    dataAccessed: 'New event created on calendar',
+    icon: '➕',
+    color: 'rose'
+  },
+  'check_availability': {
+    name: 'check_availability',
+    displayName: 'Check Availability',
+    backend: 'google-calendar',
+    backendDisplay: 'Google Calendar API',
+    apiName: 'Google Calendar API v3',
+    apiEndpoint: 'calendar.freebusy.query',
+    dataAccessed: 'Free/busy time slots',
+    icon: '🕐',
+    color: 'rose'
+  },
+  'cancel_calendar_event': {
+    name: 'cancel_calendar_event',
+    displayName: 'Cancel Calendar Event',
+    backend: 'google-calendar',
+    backendDisplay: 'Google Calendar API',
+    apiName: 'Google Calendar API v3',
+    apiEndpoint: 'calendar.events.delete',
+    dataAccessed: 'Event removed from calendar',
+    icon: '❌',
+    color: 'rose'
+  },
+  
+  // Salesforce Tools
+  'search_salesforce_contacts': {
+    name: 'search_salesforce_contacts',
+    displayName: 'Search Contacts',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Contact/search',
+    dataAccessed: 'Contact records matching search criteria',
+    icon: '🔍',
+    color: 'sky'
+  },
+  'get_contact_opportunities': {
+    name: 'get_contact_opportunities',
+    displayName: 'Get Contact Opportunities',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Opportunity',
+    dataAccessed: 'Opportunities linked to contact',
+    icon: '💰',
+    color: 'sky'
+  },
+  'get_sales_pipeline': {
+    name: 'get_sales_pipeline',
+    displayName: 'Get Sales Pipeline',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Opportunity/query',
+    dataAccessed: 'Pipeline stages, deal values, forecasts',
+    icon: '📊',
+    color: 'sky'
+  },
+  'get_high_value_accounts': {
+    name: 'get_high_value_accounts',
+    displayName: 'Get High-Value Accounts',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Account/query',
+    dataAccessed: 'Top accounts by revenue/value',
+    icon: '⭐',
+    color: 'sky'
+  },
+  'create_salesforce_task': {
+    name: 'create_salesforce_task',
+    displayName: 'Create Task',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Task/create',
+    dataAccessed: 'New task created in CRM',
+    icon: '✅',
+    color: 'sky'
+  },
+  'create_salesforce_note': {
+    name: 'create_salesforce_note',
+    displayName: 'Create Note',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Note/create',
+    dataAccessed: 'New note attached to record',
+    icon: '📝',
+    color: 'sky'
+  },
+  'get_pipeline_value': {
+    name: 'get_pipeline_value',
+    displayName: 'Get Pipeline Value',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'analytics/reports',
+    dataAccessed: 'Total pipeline value, stage breakdown',
+    icon: '💵',
+    color: 'sky'
+  },
+  'update_opportunity_stage': {
+    name: 'update_opportunity_stage',
+    displayName: 'Update Opportunity Stage',
+    backend: 'salesforce',
+    backendDisplay: 'Salesforce CRM',
+    apiName: 'Salesforce REST API v58.0',
+    apiEndpoint: 'sobjects/Opportunity/update',
+    dataAccessed: 'Opportunity stage updated',
+    icon: '📈',
+    color: 'sky'
+  },
+  
+  // Internal MCP Tools (Wealth Portfolio)
+  'get_portfolio_summary': {
+    name: 'get_portfolio_summary',
+    displayName: 'Get Portfolio Summary',
+    backend: 'internal-mcp',
+    backendDisplay: 'Internal MCP Server',
+    apiName: 'Apex Wealth MCP',
+    apiEndpoint: 'mcp://apex-wealth/portfolio',
+    dataAccessed: 'Portfolio holdings, values, allocation',
+    icon: '💼',
+    color: 'emerald'
+  },
+  'get_client_info': {
+    name: 'get_client_info',
+    displayName: 'Get Client Info',
+    backend: 'internal-mcp',
+    backendDisplay: 'Internal MCP Server',
+    apiName: 'Apex Wealth MCP',
+    apiEndpoint: 'mcp://apex-wealth/client',
+    dataAccessed: 'Client profile, preferences, risk tolerance',
+    icon: '👤',
+    color: 'emerald'
+  },
+  'process_payment': {
+    name: 'process_payment',
+    displayName: 'Process Payment',
+    backend: 'internal-mcp',
+    backendDisplay: 'Internal MCP Server',
+    apiName: 'Apex Wealth MCP',
+    apiEndpoint: 'mcp://apex-wealth/payment',
+    dataAccessed: 'Payment transaction processed',
+    icon: '💳',
+    color: 'emerald'
+  },
+  'get_transactions': {
+    name: 'get_transactions',
+    displayName: 'Get Transactions',
+    backend: 'internal-mcp',
+    backendDisplay: 'Internal MCP Server',
+    apiName: 'Apex Wealth MCP',
+    apiEndpoint: 'mcp://apex-wealth/transactions',
+    dataAccessed: 'Transaction history, amounts, dates',
+    icon: '📋',
+    color: 'emerald'
+  },
+  'get_recommendations': {
+    name: 'get_recommendations',
+    displayName: 'Get Recommendations',
+    backend: 'internal-mcp',
+    backendDisplay: 'Internal MCP Server',
+    apiName: 'Apex Wealth MCP',
+    apiEndpoint: 'mcp://apex-wealth/recommendations',
+    dataAccessed: 'Investment recommendations',
+    icon: '💡',
+    color: 'emerald'
+  }
+};
+
+// Helper to get tool metadata
+function getToolMetadata(toolName: string): ToolMetadata | null {
+  // Direct match
+  if (TOOL_METADATA[toolName]) return TOOL_METADATA[toolName];
+  
+  // Try to find by partial match
+  for (const [key, metadata] of Object.entries(TOOL_METADATA)) {
+    if (toolName.includes(key) || key.includes(toolName)) {
+      return metadata;
+    }
+  }
+  
+  return null;
 }
 
 // Helper to detect which tools use which backend
@@ -136,121 +372,174 @@ function TokenCard({ title, token, color, stepNumber, icon, wasUsed, isOpaque }:
   );
 }
 
-// Security gap mapping
-const SECURITY_GAPS: Record<string, { gaps: string[]; description: string }> = {
-  'ID-JAG': { 
-    gaps: ['No User Context', 'Overprivileged Access'], 
-    description: 'User identity preserved in delegated agent token'
+// Business-focused JTBD mapping
+const BUSINESS_JTBD: Record<string, { title: string; description: string; securityNote: string; icon: string }> = {
+  'User Request': {
+    title: 'Request Initiated',
+    description: 'You asked the AI agent to help with a task',
+    securityNote: 'Your request is processed securely within your session',
+    icon: '💬'
   },
-  'MCP': { 
-    gaps: ['Overprivileged Access', 'No Audit Trail'], 
-    description: 'Scoped access token for MCP server'
+  'ID-JAG': {
+    title: 'Identity Verified & Delegated',
+    description: 'Your identity was securely passed to the AI agent',
+    securityNote: 'Agent acts on your behalf with your permissions only',
+    icon: '✓'
   },
-  'Vault': { 
-    gaps: ['Shadow IT', 'No Audit Trail'], 
-    description: 'Federated identity exchange via Token Vault'
+  'MCP Auth': {
+    title: 'Agent Authorized',
+    description: 'Agent received limited, time-bound access',
+    securityNote: 'Least-privilege access - only what\'s needed for this task',
+    icon: '🔒'
   },
-  'Google': { 
-    gaps: ['Shadow IT', 'No User Context'], 
-    description: 'User-delegated access to Google Calendar'
+  'Vault': {
+    title: 'Secure Connection Established',
+    description: 'Your linked accounts accessed via secure vault',
+    securityNote: 'Your credentials never exposed to AI - only secure tokens used',
+    icon: '🔐'
   },
-  'Salesforce': { 
-    gaps: ['Shadow IT', 'No User Context'], 
-    description: 'User-delegated access to Salesforce CRM'
+  'Google': {
+    title: 'Calendar Access Granted',
+    description: 'Retrieved your calendar data with your consent',
+    securityNote: 'Read-only access to calendar you previously authorized',
+    icon: '📅'
   },
-  'Tool': { 
-    gaps: ['No Audit Trail'], 
-    description: 'Tool execution logged with user context'
+  'Salesforce': {
+    title: 'CRM Access Granted',
+    description: 'Accessed Salesforce data with your consent',
+    securityNote: 'Scoped to your Salesforce permissions',
+    icon: '☁️'
+  },
+  'list_calendar': {
+    title: 'Calendar Events Retrieved',
+    description: 'Found your upcoming meetings and appointments',
+    securityNote: 'Only retrieved events, no changes made',
+    icon: '📋'
+  },
+  'create_calendar': {
+    title: 'Calendar Event Created',
+    description: 'Added a new event to your calendar',
+    securityNote: 'Action logged and attributable to you',
+    icon: '➕'
+  },
+  'search_salesforce': {
+    title: 'Contacts Searched',
+    description: 'Found matching contacts in your CRM',
+    securityNote: 'Search scoped to your accessible records',
+    icon: '🔍'
+  },
+  'get_contact': {
+    title: 'Contact Details Retrieved',
+    description: 'Fetched contact information from CRM',
+    securityNote: 'Read-only access to contact record',
+    icon: '👤'
+  },
+  'get_pipeline': {
+    title: 'Pipeline Data Retrieved',
+    description: 'Accessed your sales pipeline information',
+    securityNote: 'Scoped to your team\'s pipeline visibility',
+    icon: '📊'
+  },
+  'process_payment': {
+    title: 'Payment Processed',
+    description: 'Transaction initiated through secure channel',
+    securityNote: 'Requires your authorization, fully audited',
+    icon: '💳'
+  },
+  'get_portfolio': {
+    title: 'Portfolio Retrieved',
+    description: 'Accessed client portfolio information',
+    securityNote: 'Read-only access within your authorization',
+    icon: '💼'
+  },
+  'Tool': {
+    title: 'Action Completed',
+    description: 'Agent performed a task on your behalf',
+    securityNote: 'All actions logged with your identity',
+    icon: '⚡'
   }
 };
+
+function getBusinessInfo(step: string): { title: string; description: string; securityNote: string; icon: string } {
+  // Check for specific tool names first
+  if (step.includes('list_calendar')) return BUSINESS_JTBD['list_calendar'];
+  if (step.includes('create_calendar')) return BUSINESS_JTBD['create_calendar'];
+  if (step.includes('search_salesforce')) return BUSINESS_JTBD['search_salesforce'];
+  if (step.includes('get_contact') || step.includes('get_opportunities')) return BUSINESS_JTBD['get_contact'];
+  if (step.includes('get_pipeline') || step.includes('get_sales') || step.includes('get_high_value')) return BUSINESS_JTBD['get_pipeline'];
+  if (step.includes('process_payment')) return BUSINESS_JTBD['process_payment'];
+  if (step.includes('get_portfolio') || step.includes('get_client')) return BUSINESS_JTBD['get_portfolio'];
+  
+  // Then check for token exchange steps
+  if (step.includes('User Request')) return BUSINESS_JTBD['User Request'];
+  if (step.includes('ID-JAG')) return BUSINESS_JTBD['ID-JAG'];
+  if (step.includes('MCP Auth')) return BUSINESS_JTBD['MCP Auth'];
+  if (step.includes('Vault')) return BUSINESS_JTBD['Vault'];
+  if (step.includes('Google') || step.includes('Calendar')) return BUSINESS_JTBD['Google'];
+  if (step.includes('Salesforce')) return BUSINESS_JTBD['Salesforce'];
+  if (step.includes('Tool:')) return BUSINESS_JTBD['Tool'];
+  
+  return { title: step, description: 'Processing...', securityNote: 'Secure operation', icon: '●' };
+}
 
 function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaInfo: any; tokenVaultInfo: any }) {
   const [expanded, setExpanded] = useState(false);
   
-  // Find which security gaps this step addresses
-  const getSecurityInfo = () => {
-    const step = entry.step;
-    if (step.includes('ID-JAG')) return SECURITY_GAPS['ID-JAG'];
-    if (step.includes('MCP')) return SECURITY_GAPS['MCP'];
-    if (step.includes('Vault')) return SECURITY_GAPS['Vault'];
-    if (step.includes('Google') || step.includes('Calendar')) return SECURITY_GAPS['Google'];
-    if (step.includes('Salesforce')) return SECURITY_GAPS['Salesforce'];
-    if (step.includes('Tool:')) return SECURITY_GAPS['Tool'];
-    return null;
-  };
+  const businessInfo = getBusinessInfo(entry.step);
   
-  // Get the relevant decoded token
-  const getDecodedToken = () => {
-    const step = entry.step;
-    if (step.includes('ID-JAG') && xaaInfo?.id_jag_token) {
-      return decodeJWT(xaaInfo.id_jag_token);
-    }
-    if (step.includes('MCP') && xaaInfo?.mcp_token) {
-      return decodeJWT(xaaInfo.mcp_token);
-    }
-    if (step.includes('Vault') && tokenVaultInfo?.vault_token) {
-      return decodeJWT(tokenVaultInfo.vault_token);
-    }
-    return null;
-  };
-  
-  // Get icon for step type
-  const getStepIcon = () => {
-    const step = entry.step;
-    if (step.includes('User Request')) return '👤';
-    if (step.includes('ID-JAG')) return '🔑';
-    if (step.includes('MCP Auth')) return '🎫';
-    if (step.includes('Vault')) return '🔐';
-    if (step.includes('Google') || step.includes('Calendar') || step.includes('list_calendar')) return '📅';
-    if (step.includes('Salesforce') || step.includes('search_salesforce')) return '☁️';
-    if (step.includes('Tool:')) return '🔧';
-    return '●';
-  };
-  
-  const securityInfo = getSecurityInfo();
-  const decoded = getDecodedToken();
+  // Extract tool name from step (e.g., "Tool: list_calendar_events" -> "list_calendar_events")
+  const toolName = entry.step.includes('Tool:') ? entry.step.replace('Tool: ', '').trim() : null;
+  const toolMetadata = toolName ? getToolMetadata(toolName) : null;
   
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
+  
+  // Determine backend type for coloring
+  const getBackendColor = () => {
+    if (toolMetadata?.backend === 'google-calendar') return 'border-rose-500/30 bg-rose-900/10';
+    if (toolMetadata?.backend === 'salesforce') return 'border-sky-500/30 bg-sky-900/10';
+    if (toolMetadata?.backend === 'internal-mcp') return 'border-emerald-500/30 bg-emerald-900/10';
+    if (entry.status === 'success') return 'border-green-500/30 bg-slate-900/50';
+    if (entry.status === 'error') return 'border-red-500/30 bg-red-900/10';
+    return 'border-amber-500/30 bg-amber-900/10';
+  };
 
   return (
-    <div className={`rounded-lg border overflow-hidden ${
-      entry.status === 'success' ? 'border-green-500/30 bg-green-900/10' :
-      entry.status === 'error' ? 'border-red-500/30 bg-red-900/10' :
-      'border-amber-500/30 bg-amber-900/10'
-    }`}>
+    <div className={`rounded-lg border overflow-hidden ${getBackendColor()}`}>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-3 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <span className="text-base">{getStepIcon()}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xl">{toolMetadata?.icon || businessInfo.icon}</span>
           <div className="text-left">
-            <span className={`text-sm font-medium block ${
-              entry.step.includes('Salesforce') ? 'text-sky-400' :
-              entry.step.includes('Google') || entry.step.includes('Calendar') || entry.step.includes('list_calendar') ? 'text-rose-400' :
-              entry.step.includes('Tool:') ? 'text-amber-400' :
-              'text-white'
-            }`}>
-              {entry.step}
+            <span className="text-sm font-medium text-white block">
+              {toolMetadata?.displayName || businessInfo.title}
             </span>
-            {/* Preview line - always visible */}
-            <span className="text-[10px] text-slate-500 block mt-0.5">
-              {entry.details?.expiresIn && `TTL: ${entry.details.expiresIn}s`}
-              {entry.details?.expiresIn && decoded?.sub && ' · '}
-              {decoded?.sub && `${decoded.sub.substring(0, 25)}${decoded.sub.length > 25 ? '...' : ''}`}
-              {!entry.details?.expiresIn && !decoded?.sub && securityInfo?.description}
+            <span className="text-xs text-slate-400 block mt-0.5">
+              {toolMetadata ? toolMetadata.backendDisplay : businessInfo.description}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Security badge preview */}
-          {securityInfo && !expanded && (
-            <span className="text-[9px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded hidden sm:inline">
-              {securityInfo.gaps.length} gaps solved
+          {/* Backend badge */}
+          {toolMetadata && (
+            <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+              toolMetadata.backend === 'google-calendar' ? 'bg-rose-500/20 text-rose-400' :
+              toolMetadata.backend === 'salesforce' ? 'bg-sky-500/20 text-sky-400' :
+              'bg-emerald-500/20 text-emerald-400'
+            }`}>
+              {toolMetadata.backend === 'internal-mcp' ? 'Internal MCP' : 
+               toolMetadata.backend === 'google-calendar' ? 'External SaaS' : 
+               'External SaaS'}
             </span>
           )}
+          <span className={`w-2 h-2 rounded-full ${
+            entry.status === 'success' ? 'bg-green-500' :
+            entry.status === 'error' ? 'bg-red-500' :
+            'bg-amber-500 animate-pulse'
+          }`}></span>
           <span className="text-xs text-slate-500">{formatTime(entry.timestamp)}</span>
           <svg className={`w-4 h-4 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -260,57 +549,65 @@ function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaI
       
       {expanded && (
         <div className="px-3 pb-3 border-t border-slate-800 space-y-2">
-          {/* Basic details */}
-          {entry.details && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {entry.details.tokenType && (
-                <span className="text-xs px-2 py-0.5 bg-slate-800 text-slate-400 rounded">
-                  {entry.details.tokenType}
-                </span>
+          {/* Tool Details - shown for tool calls */}
+          {toolMetadata && (
+            <div className="mt-2 bg-slate-800/50 rounded p-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 w-16">Tool:</span>
+                <span className="text-xs text-white font-mono">{toolMetadata.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 w-16">Backend:</span>
+                <span className={`text-xs font-medium ${
+                  toolMetadata.backend === 'google-calendar' ? 'text-rose-400' :
+                  toolMetadata.backend === 'salesforce' ? 'text-sky-400' :
+                  'text-emerald-400'
+                }`}>{toolMetadata.backendDisplay}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 w-16">API:</span>
+                <span className="text-xs text-slate-300">{toolMetadata.apiName}</span>
+              </div>
+              {toolMetadata.apiEndpoint && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 w-16">Endpoint:</span>
+                  <span className="text-xs text-slate-400 font-mono">{toolMetadata.apiEndpoint}</span>
+                </div>
               )}
-              {entry.details.expiresIn && (
-                <span className="text-xs px-2 py-0.5 bg-slate-800 text-slate-400 rounded">
-                  TTL: {entry.details.expiresIn}s
-                </span>
-              )}
-              {entry.details.connection && (
-                <span className={`text-xs px-2 py-0.5 rounded ${
-                  entry.details.connection === 'salesforce' 
-                    ? 'bg-sky-500/20 text-sky-400' 
-                    : 'bg-rose-500/20 text-rose-400'
-                }`}>
-                  {entry.details.connection}
-                </span>
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-slate-500 w-16">Data:</span>
+                <span className="text-xs text-slate-300">{toolMetadata.dataAccessed}</span>
+              </div>
+              {entry.details?.recordCount !== undefined && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 w-16">Records:</span>
+                  <span className="text-xs text-green-400 font-medium">{entry.details.recordCount} returned</span>
+                </div>
               )}
             </div>
           )}
           
-          {/* Security gaps solved */}
-          {securityInfo && (
-            <div className="bg-green-900/20 rounded p-2 border border-green-500/20">
-              <p className="text-xs text-slate-400 mb-1">{securityInfo.description}</p>
-              <div className="flex flex-wrap gap-1">
-                {securityInfo.gaps.map((gap, i) => (
-                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
-                    ✓ {gap}
-                  </span>
-                ))}
-              </div>
+          {/* Security assurance */}
+          <div className="bg-green-900/20 rounded p-2 border border-green-500/20">
+            <div className="flex items-start gap-2">
+              <span className="text-green-400">🛡️</span>
+              <p className="text-xs text-green-300">{businessInfo.securityNote}</p>
             </div>
-          )}
+          </div>
           
-          {/* Key claims from decoded token */}
-          {decoded && (
-            <div className="bg-slate-800/50 rounded p-2">
-              <p className="text-[10px] text-slate-500 mb-1">Key Claims:</p>
-              <div className="text-xs text-slate-300 space-y-0.5">
-                {decoded.sub && <p><span className="text-slate-500">sub:</span> {decoded.sub}</p>}
-                {decoded.aud && <p><span className="text-slate-500">aud:</span> {Array.isArray(decoded.aud) ? decoded.aud.join(', ') : decoded.aud}</p>}
-                {decoded.scope && <p><span className="text-slate-500">scope:</span> {decoded.scope}</p>}
-                {decoded.scp && <p><span className="text-slate-500">scp:</span> {decoded.scp.join(', ')}</p>}
-                {decoded.exp && <p><span className="text-slate-500">exp:</span> {new Date(decoded.exp * 1000).toLocaleTimeString()}</p>}
+          {/* Technical details toggle - for non-tool entries */}
+          {!toolMetadata && (
+            <details className="mt-1">
+              <summary className="text-[10px] text-slate-500 cursor-pointer hover:text-slate-400">
+                Technical details
+              </summary>
+              <div className="mt-1 bg-slate-800/50 rounded p-2 text-[10px] font-mono text-slate-400">
+                <p>Step: {entry.step}</p>
+                {entry.details?.expiresIn && <p>TTL: {entry.details.expiresIn}s</p>}
+                {entry.details?.connection && <p>Connection: {entry.details.connection}</p>}
+                {entry.details?.tokenType && <p>Type: {entry.details.tokenType}</p>}
               </div>
-            </div>
+            </details>
           )}
         </div>
       )}
@@ -322,79 +619,83 @@ function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaI
 function LogEntry({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaInfo: any; tokenVaultInfo: any }) {
   const [expanded, setExpanded] = useState(false);
   
+  const businessInfo = getBusinessInfo(entry.step);
+  
+  // Extract tool name and get metadata
+  const toolName = entry.step.includes('Tool:') ? entry.step.replace('Tool: ', '').trim() : null;
+  const toolMetadata = toolName ? getToolMetadata(toolName) : null;
+  
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
   
-  // Get decoded token for this step
-  const getDecodedToken = () => {
-    const step = entry.step;
-    if (step.includes('ID-JAG') && xaaInfo?.id_jag_token) {
-      return decodeJWT(xaaInfo.id_jag_token);
-    }
-    if (step.includes('MCP') && xaaInfo?.mcp_token) {
-      return decodeJWT(xaaInfo.mcp_token);
-    }
-    if (step.includes('Vault') && tokenVaultInfo?.vault_token) {
-      return decodeJWT(tokenVaultInfo.vault_token);
-    }
-    return null;
+  // Get border color based on backend
+  const getBorderColor = () => {
+    if (toolMetadata?.backend === 'google-calendar') return 'border-rose-500/50';
+    if (toolMetadata?.backend === 'salesforce') return 'border-sky-500/50';
+    if (toolMetadata?.backend === 'internal-mcp') return 'border-emerald-500/50';
+    return 'border-green-500/50';
   };
   
-  const decoded = getDecodedToken();
-  
   return (
-    <div className="border-l-2 border-slate-800 hover:border-slate-600 transition-colors">
+    <div className={`border-l-2 border-slate-800 hover:${getBorderColor()} transition-colors`}>
       <div 
         className="flex items-start gap-2 py-1.5 px-3 hover:bg-slate-800/30 cursor-pointer select-none"
         onDoubleClick={() => setExpanded(!expanded)}
       >
-        <span className="text-slate-600 w-20 flex-shrink-0 tabular-nums">{formatTime(entry.timestamp)}</span>
-        <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+        <span className="text-slate-600 w-20 flex-shrink-0 tabular-nums text-xs">{formatTime(entry.timestamp)}</span>
+        <span className="text-base flex-shrink-0">{toolMetadata?.icon || businessInfo.icon}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm text-white">{toolMetadata?.displayName || businessInfo.title}</span>
+          {toolMetadata && (
+            <span className={`text-xs ml-2 ${
+              toolMetadata.backend === 'google-calendar' ? 'text-rose-400' :
+              toolMetadata.backend === 'salesforce' ? 'text-sky-400' :
+              'text-emerald-400'
+            }`}>
+              → {toolMetadata.backendDisplay}
+            </span>
+          )}
+          {!toolMetadata && (
+            <span className="text-xs text-slate-500 ml-2">{businessInfo.description}</span>
+          )}
+        </div>
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${
           entry.status === 'success' ? 'bg-green-500' :
           entry.status === 'error' ? 'bg-red-500' :
           'bg-amber-500'
         }`}></span>
-        <div className="flex-1 min-w-0">
-          <span className={`${
-            entry.step.includes('Salesforce') || entry.step.includes('search_salesforce') ? 'text-sky-400' :
-            entry.step.includes('Google') || entry.step.includes('Calendar') || entry.step.includes('list_calendar') ? 'text-rose-400' :
-            entry.step.includes('Tool:') ? 'text-amber-400' :
-            entry.step.includes('Error') ? 'text-red-400' :
-            entry.step.includes('ID-JAG') || entry.step.includes('MCP') || entry.step.includes('Vault') ? 'text-cyan-400' :
-            'text-slate-300'
-          }`}>
-            {entry.step}
-          </span>
-          {entry.details?.expiresIn && <span className="text-slate-600 ml-2">TTL:{entry.details.expiresIn}s</span>}
-          {entry.details?.connection && <span className="text-slate-600 ml-2">[{entry.details.connection}]</span>}
-          {decoded?.sub && <span className="text-slate-600 ml-2 truncate">sub:{decoded.sub.substring(0, 20)}...</span>}
-        </div>
-        <span className="text-slate-700 text-[10px]">{expanded ? '▼' : '▶'}</span>
       </div>
       
       {expanded && (
-        <div className="pl-24 pr-3 pb-2 text-[11px] bg-slate-900/50 border-l-2 border-cyan-500/50">
-          {decoded && (
-            <div className="space-y-0.5 py-1">
-              {decoded.sub && <div><span className="text-slate-500">sub:</span> <span className="text-slate-300">{decoded.sub}</span></div>}
-              {decoded.aud && <div><span className="text-slate-500">aud:</span> <span className="text-slate-300">{Array.isArray(decoded.aud) ? decoded.aud.join(', ') : decoded.aud}</span></div>}
-              {decoded.scope && <div><span className="text-slate-500">scope:</span> <span className="text-green-400">{decoded.scope}</span></div>}
-              {decoded.scp && <div><span className="text-slate-500">scp:</span> <span className="text-green-400">{decoded.scp.join(', ')}</span></div>}
-              {decoded.iss && <div><span className="text-slate-500">iss:</span> <span className="text-slate-300">{decoded.iss}</span></div>}
-              {decoded.exp && <div><span className="text-slate-500">exp:</span> <span className="text-slate-300">{new Date(decoded.exp * 1000).toISOString()}</span></div>}
+        <div className={`pl-24 pr-3 pb-2 text-xs bg-slate-900/50 border-l-2 ${getBorderColor()}`}>
+          <div className="py-2 space-y-2">
+            {/* Tool details */}
+            {toolMetadata && (
+              <div className="bg-slate-800/50 rounded p-2 space-y-1">
+                <div className="text-[10px]">
+                  <span className="text-slate-500">API: </span>
+                  <span className="text-slate-300">{toolMetadata.apiName}</span>
+                </div>
+                {toolMetadata.apiEndpoint && (
+                  <div className="text-[10px]">
+                    <span className="text-slate-500">Endpoint: </span>
+                    <span className="text-slate-400 font-mono">{toolMetadata.apiEndpoint}</span>
+                  </div>
+                )}
+                <div className="text-[10px]">
+                  <span className="text-slate-500">Data: </span>
+                  <span className="text-slate-300">{toolMetadata.dataAccessed}</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Security note */}
+            <div className="flex items-start gap-2">
+              <span className="text-green-400">🛡️</span>
+              <span className="text-green-300 text-[11px]">{businessInfo.securityNote}</span>
             </div>
-          )}
-          {!decoded && entry.details && (
-            <div className="space-y-0.5 py-1 text-slate-400">
-              {entry.details.tokenType && <div>Type: {entry.details.tokenType}</div>}
-              {entry.details.expiresIn && <div>Expires: {entry.details.expiresIn}s</div>}
-              {entry.details.connection && <div>Connection: {entry.details.connection}</div>}
-            </div>
-          )}
-          {!decoded && !entry.details && (
-            <div className="py-1 text-slate-500 italic">No additional details</div>
-          )}
+          </div>
         </div>
       )}
     </div>
@@ -550,12 +851,12 @@ export default function SecurityFlowTab({
           </div>
         </div>
 
-        {/* RIGHT: Audit Trail */}
+        {/* RIGHT: Audit Trail - Business Focused */}
         <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white">📋 Audit Trail</h2>
-              <p className="text-xs text-slate-500">Current request events</p>
+              <h2 className="text-lg font-bold text-white">🛡️ What Happened</h2>
+              <p className="text-xs text-slate-500">Secure actions on your behalf</p>
             </div>
             <div className="flex items-center gap-2">
               {displayEvents.length > 0 && (
