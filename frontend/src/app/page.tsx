@@ -124,7 +124,7 @@ export default function ApexWealthAdvisor() {
       if (data.xaa_info) {
         setLastXAAInfo(data.xaa_info);
         // Add XAA audit entries
-        if (data.xaa_info.id_jag_obtained) {
+        if (data.xaa_info.id_jag_token) {
           addAuditEntry({
             step: 'ID-JAG Token Exchange',
             status: 'success',
@@ -135,7 +135,7 @@ export default function ApexWealthAdvisor() {
             rawToken: data.xaa_info.id_jag_token
           });
         }
-        if (data.xaa_info.mcp_token_obtained) {
+        if (data.xaa_info.mcp_token) {
           addAuditEntry({
             step: 'MCP Auth Server Token',
             status: 'success',
@@ -152,7 +152,7 @@ export default function ApexWealthAdvisor() {
       if (data.token_vault_info) {
         setLastTokenVaultInfo(data.token_vault_info);
         // Add Token Vault audit entries
-        if (data.token_vault_info.vault_token_obtained) {
+        if (data.token_vault_info.vault_token) {
           addAuditEntry({
             step: 'Auth0 Vault Token',
             status: 'success',
@@ -163,7 +163,7 @@ export default function ApexWealthAdvisor() {
             rawToken: data.token_vault_info.vault_token
           });
         }
-        if (data.token_vault_info.google_token_obtained) {
+        if (data.token_vault_info.google_token) {
           addAuditEntry({
             step: 'Google Calendar Token',
             status: 'success',
@@ -365,13 +365,13 @@ export default function ApexWealthAdvisor() {
 
       {/* Main Content - Tab Panels */}
       <main className="flex-1 overflow-hidden">
-        {/* TAB 1: Agent (Original 3-column layout) */}
+        {/* TAB 1: Agent (2-column layout: Chat + Token Cards) */}
         {activeMainTab === 'agent' && (
           <div className="h-full p-2">
             <div className="h-full grid grid-cols-12 gap-2">
               
-              {/* LEFT: Chat - 50% (6 cols) */}
-              <div className="col-span-6 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+              {/* LEFT: Chat - 8 cols */}
+              <div className="col-span-8 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="space-y-4">
@@ -379,13 +379,13 @@ export default function ApexWealthAdvisor() {
                       <div key={msg.id}>
                         {msg.role === 'user' ? (
                           <div className="flex justify-end">
-                            <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-md">
+                            <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-xl">
                               <p className="text-sm">{msg.content}</p>
                               <p className="text-xs text-amber-800 mt-1">{formatTime(msg.timestamp)}</p>
                             </div>
                           </div>
                         ) : (
-                          <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm p-4 max-w-2xl">
+                          <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm p-4 max-w-3xl">
                             <p className="text-sm text-slate-200 whitespace-pre-wrap">{msg.content}</p>
                             {msg.toolsCalled && msg.toolsCalled.length > 0 && (
                               <div className="mt-3 pt-3 border-t border-slate-700 flex flex-wrap gap-1">
@@ -437,73 +437,8 @@ export default function ApexWealthAdvisor() {
                 </div>
               </div>
 
-              {/* CENTER: Architecture Visual - 25% (3 cols) */}
-              <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 p-4 overflow-y-auto">
-                <h3 className="text-sm font-semibold text-white mb-4">Security Flow</h3>
-                
-                {/* Visual Flow */}
-                <div className="space-y-4">
-                  {/* User */}
-                  <div className="flex items-center justify-center">
-                    <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-sm font-medium">
-                      👤 {session?.user?.name || 'User'}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-center">
-                    <div className="w-0.5 h-8 bg-slate-600"></div>
-                  </div>
-
-                  {/* Identity Provider */}
-                  <div className="flex items-center justify-center">
-                    <div className="px-6 py-3 bg-blue-600 rounded-xl text-white text-center">
-                      <p className="font-semibold text-sm">Okta</p>
-                      <p className="text-xs text-blue-200">XAA / ID-JAG</p>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <div className="w-0.5 h-8 bg-slate-600"></div>
-                  </div>
-
-                  {/* AI Agent */}
-                  <div className="flex items-center justify-center">
-                    <div className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
-                      <p className="font-semibold text-slate-900">🤖 Buffett</p>
-                      <p className="text-xs text-slate-800">AI Agent</p>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <div className="w-0.5 h-8 bg-slate-600"></div>
-                  </div>
-
-                  {/* Backend Services */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                      <p className="text-xs font-medium text-white">MCP Server</p>
-                      <p className="text-xs text-green-400">Okta XAA</p>
-                    </div>
-                    <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                      <p className="text-xs font-medium text-white">Google Cal</p>
-                      <p className="text-xs text-purple-400">Token Vault</p>
-                    </div>
-                  </div>
-
-                  {/* Auth0 */}
-                  <div className="mt-4 pt-4 border-t border-slate-700">
-                    <div className="flex items-center justify-center">
-                      <div className="px-4 py-2 bg-purple-600 rounded-xl text-white text-center">
-                        <p className="font-semibold text-sm">Auth0</p>
-                        <p className="text-xs text-purple-200">Token Vault</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT: Token Flow Cards - 25% (3 cols) */}
-              <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
+              {/* RIGHT: Token Flow Cards - 4 cols */}
+              <div className="col-span-4 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
                 <div className="p-2 space-y-2">
                   {/* ID Token Card */}
                   <IdTokenCard idToken={(session as any)?.idToken || ''} />
