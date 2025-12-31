@@ -293,7 +293,7 @@ export default function ApexWealthAdvisor() {
 
   // Main app
   return (
-    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Header with tabs */}
       <header className="border-b border-slate-800 bg-slate-900">
         <div className="px-4 py-3">
@@ -310,16 +310,15 @@ export default function ApexWealthAdvisor() {
             </div>
             
             {/* Tab Navigation */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
-                <button
-                  onClick={() => setActiveMainTab('agent')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                    activeMainTab === 'agent' 
-                      ? 'bg-slate-700 text-white' 
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
+            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+              <button
+                onClick={() => setActiveMainTab('agent')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                  activeMainTab === 'agent' 
+                    ? 'bg-slate-700 text-white' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
                 <span>🤖</span> Agent
               </button>
               <button
@@ -341,29 +340,6 @@ export default function ApexWealthAdvisor() {
                 }`}
               >
                 <span>📖</span> Demo Guide
-              </button>
-              </div>
-              
-              {/* Prompt Library Button */}
-              <button
-                onClick={() => setShowPromptLibrary(true)}
-                className="px-3 py-2 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/30 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                Prompts
-              </button>
-              
-              {/* New Chat Button */}
-              <button
-                onClick={handleNewChat}
-                className="px-3 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-600 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                New Chat
               </button>
             </div>
 
@@ -475,9 +451,19 @@ export default function ApexWealthAdvisor() {
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
                           placeholder="Ask about clients, portfolios, calendar, transactions..."
-                          className="w-full p-4 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-slate-400 text-sm"
+                          className="w-full p-4 pr-12 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-slate-400 text-sm"
                           disabled={isLoading}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPromptLibrary(true)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-amber-400 transition-colors"
+                          title="Browse prompts"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                        </button>
                       </div>
                       <button
                         type="submit"
@@ -506,40 +492,115 @@ export default function ApexWealthAdvisor() {
                 </div>
               </div>
 
-              {/* RIGHT: Token Flow Cards - 4 cols */}
+              {/* RIGHT: Security Status - Business Focused - 4 cols */}
               <div className="col-span-4 bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
                 <div className="px-3 py-2 border-b border-slate-800">
-                  <h3 className="text-sm font-semibold text-white">🔐 Token Flow</h3>
-                  <p className="text-[10px] text-slate-500">Real-time security token chain</p>
+                  <h3 className="text-sm font-semibold text-white">🛡️ Security Status</h3>
+                  <p className="text-[10px] text-slate-500">Your session is protected</p>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {/* ID Token Card */}
-                  <IdTokenCard idToken={(session as any)?.idToken || ''} />
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  {/* Identity Verified Card */}
+                  <div className="p-3 rounded-lg border border-green-500/30 bg-green-900/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-green-400 text-lg">✓</span>
+                      <span className="text-sm font-medium text-white">Identity Verified</span>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Signed in as <span className="text-cyan-400">{session?.user?.email}</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-1">Your identity is securely delegated to the AI agent</p>
+                  </div>
                   
-                  {/* XAA Flow Card */}
-                  <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
+                  {/* Agent Authorized Card */}
+                  {lastXAAInfo?.token_obtained && (
+                    <div className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-cyan-400 text-lg">🔐</span>
+                        <span className="text-sm font-medium text-white">Agent Authorized</span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Limited access granted with <span className="text-green-400">least-privilege</span> scope
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-1">Token expires in {lastXAAInfo?.mcp_token_expires_in || 3600}s</p>
+                    </div>
+                  )}
                   
-                  {/* Token Vault Flow Card - Updated to handle both Google and Salesforce */}
-                  <TokenVaultFlow 
-                    tokenVaultInfo={lastTokenVaultInfo} 
-                    isActive={lastToolsCalled.some(t => 
-                      t.includes('calendar') || 
-                      t.includes('availability') || 
-                      t.includes('salesforce')
-                    )}
-                    toolsCalled={lastToolsCalled}
-                  />
+                  {/* External Access Card - Google Calendar */}
+                  {lastToolsCalled.some(t => t.includes('calendar') || t.includes('availability')) && (
+                    <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-900/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-rose-400 text-lg">📅</span>
+                        <span className="text-sm font-medium text-white">Calendar Connected</span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Google Calendar accessed with your consent
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-1">Read-only access via Token Vault</p>
+                    </div>
+                  )}
                   
-                  {/* MCP Tools Card */}
-                  <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
+                  {/* External Access Card - Salesforce */}
+                  {lastToolsCalled.some(t => t.includes('salesforce')) && (
+                    <div className="p-3 rounded-lg border border-sky-500/30 bg-sky-900/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sky-400 text-lg">☁️</span>
+                        <span className="text-sm font-medium text-white">Salesforce Connected</span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        CRM data accessed with your permissions
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-1">Scoped to your Salesforce access level</p>
+                    </div>
+                  )}
+                  
+                  {/* Tools Called Summary */}
+                  {lastToolsCalled.length > 0 && (
+                    <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-900/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-amber-400 text-lg">⚡</span>
+                        <span className="text-sm font-medium text-white">Actions Completed</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {lastToolsCalled.map((tool, i) => (
+                          <span 
+                            key={i} 
+                            className={`text-[10px] px-2 py-0.5 rounded ${
+                              tool.includes('salesforce') 
+                                ? 'bg-sky-500/20 text-sky-300'
+                                : tool.includes('calendar') || tool.includes('availability')
+                                ? 'bg-rose-500/20 text-rose-300'
+                                : 'bg-emerald-500/20 text-emerald-300'
+                            }`}
+                          >
+                            ✓ {tool.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Security Assurance */}
+                  <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-400 mt-0.5">🛡️</span>
+                      <div>
+                        <p className="text-xs font-medium text-slate-300">Your Data is Protected</p>
+                        <ul className="text-[10px] text-slate-500 mt-1 space-y-0.5">
+                          <li>• Credentials never shared with AI</li>
+                          <li>• All actions logged to audit trail</li>
+                          <li>• Short-lived tokens only</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Footer */}
                 <div className="px-3 py-2 border-t border-slate-800 bg-slate-950">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-slate-500">User-Delegated Access</span>
-                    <span className="text-[10px] text-green-400">● Active</span>
+                    <span className="text-[10px] text-green-400">● Secure</span>
                   </div>
                 </div>
               </div>
