@@ -41,12 +41,13 @@ function decodeJWT(token: string): any {
   }
 }
 
-function TokenCard({ title, token, color, stepNumber, icon }: { title: string; token?: string; color: string; stepNumber: number | string; icon?: string }) {
+function TokenCard({ title, token, color, stepNumber, icon, wasUsed }: { title: string; token?: string; color: string; stepNumber: number | string; icon?: string; wasUsed?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const decoded = token ? decodeJWT(token) : null;
-  const truncatedToken = token ? `${token.slice(0, 20)}...${token.slice(-10)}` : 'Not available';
+  const truncatedToken = token ? `${token.slice(0, 20)}...${token.slice(-10)}` : null;
+  const isObtained = token || wasUsed;
   
   const copyToken = () => {
     if (token) {
@@ -66,13 +67,16 @@ function TokenCard({ title, token, color, stepNumber, icon }: { title: string; t
           {icon && <span>{icon}</span>}
           <div className="text-left">
             <p className="text-sm font-medium text-white">{title}</p>
-            {token && (
+            {truncatedToken && (
               <p className="text-xs text-slate-500 font-mono">{truncatedToken}</p>
+            )}
+            {!truncatedToken && wasUsed && (
+              <p className="text-xs text-slate-500">Token retrieved from vault</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {token ? (
+          {isObtained ? (
             <span className="text-xs text-green-400">✓ Obtained</span>
           ) : (
             <span className="text-xs text-slate-500">Pending</span>
@@ -83,7 +87,7 @@ function TokenCard({ title, token, color, stepNumber, icon }: { title: string; t
         </div>
       </button>
       
-      {expanded && token && (
+      {expanded && (token || wasUsed) && (
         <div className="px-3 pb-3 border-t border-slate-800">
           <div className="mt-2 space-y-2">
             {/* Raw Token */}
@@ -223,6 +227,7 @@ export default function SecurityFlowTab({
                     color="border-rose-500/30 bg-rose-900/10" 
                     stepNumber="5"
                     icon="📅"
+                    wasUsed={true}
                   />
                 </div>
               )}
@@ -236,6 +241,7 @@ export default function SecurityFlowTab({
                     color="border-sky-500/30 bg-sky-900/10" 
                     stepNumber="5"
                     icon="☁️"
+                    wasUsed={true}
                   />
                 </div>
               )}

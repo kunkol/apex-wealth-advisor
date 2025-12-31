@@ -475,19 +475,9 @@ export default function ApexWealthAdvisor() {
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
                           placeholder="Ask about clients, portfolios, calendar, transactions..."
-                          className="w-full p-4 pr-12 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-slate-400 text-sm"
+                          className="w-full p-4 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-slate-400 text-sm"
                           disabled={isLoading}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPromptLibrary(true)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-amber-400 transition-colors"
-                          title="Browse prompts"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                          </svg>
-                        </button>
                       </div>
                       <button
                         type="submit"
