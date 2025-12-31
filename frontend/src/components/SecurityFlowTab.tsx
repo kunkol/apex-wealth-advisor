@@ -194,6 +194,19 @@ function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaI
     return null;
   };
   
+  // Get icon for step type
+  const getStepIcon = () => {
+    const step = entry.step;
+    if (step.includes('User Request')) return '👤';
+    if (step.includes('ID-JAG')) return '🔑';
+    if (step.includes('MCP Auth')) return '🎫';
+    if (step.includes('Vault')) return '🔐';
+    if (step.includes('Google') || step.includes('Calendar') || step.includes('list_calendar')) return '📅';
+    if (step.includes('Salesforce') || step.includes('search_salesforce')) return '☁️';
+    if (step.includes('Tool:')) return '🔧';
+    return '●';
+  };
+  
   const securityInfo = getSecurityInfo();
   const decoded = getDecodedToken();
   
@@ -212,21 +225,32 @@ function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaI
         className="w-full p-3 flex items-center justify-between hover:bg-slate-800/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${
-            entry.status === 'success' ? 'bg-green-500' :
-            entry.status === 'error' ? 'bg-red-500' :
-            'bg-amber-500'
-          }`}></span>
-          <span className={`text-sm font-medium ${
-            entry.step.includes('Salesforce') ? 'text-sky-400' :
-            entry.step.includes('Google') || entry.step.includes('Calendar') ? 'text-rose-400' :
-            entry.step.includes('Tool:') ? 'text-amber-400' :
-            'text-white'
-          }`}>
-            {entry.step}
-          </span>
+          <span className="text-base">{getStepIcon()}</span>
+          <div className="text-left">
+            <span className={`text-sm font-medium block ${
+              entry.step.includes('Salesforce') ? 'text-sky-400' :
+              entry.step.includes('Google') || entry.step.includes('Calendar') || entry.step.includes('list_calendar') ? 'text-rose-400' :
+              entry.step.includes('Tool:') ? 'text-amber-400' :
+              'text-white'
+            }`}>
+              {entry.step}
+            </span>
+            {/* Preview line - always visible */}
+            <span className="text-[10px] text-slate-500 block mt-0.5">
+              {entry.details?.expiresIn && `TTL: ${entry.details.expiresIn}s`}
+              {entry.details?.expiresIn && decoded?.sub && ' · '}
+              {decoded?.sub && `${decoded.sub.substring(0, 25)}${decoded.sub.length > 25 ? '...' : ''}`}
+              {!entry.details?.expiresIn && !decoded?.sub && securityInfo?.description}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Security badge preview */}
+          {securityInfo && !expanded && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded hidden sm:inline">
+              {securityInfo.gaps.length} gaps solved
+            </span>
+          )}
           <span className="text-xs text-slate-500">{formatTime(entry.timestamp)}</span>
           <svg className={`w-4 h-4 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -287,6 +311,89 @@ function AuditCard({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaI
                 {decoded.exp && <p><span className="text-slate-500">exp:</span> {new Date(decoded.exp * 1000).toLocaleTimeString()}</p>}
               </div>
             </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Log Entry component for Logs view - expandable on double-click
+function LogEntry({ entry, xaaInfo, tokenVaultInfo }: { entry: AuditEntry; xaaInfo: any; tokenVaultInfo: any }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const formatTime = (date: Date) => {
+    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+  
+  // Get decoded token for this step
+  const getDecodedToken = () => {
+    const step = entry.step;
+    if (step.includes('ID-JAG') && xaaInfo?.id_jag_token) {
+      return decodeJWT(xaaInfo.id_jag_token);
+    }
+    if (step.includes('MCP') && xaaInfo?.mcp_token) {
+      return decodeJWT(xaaInfo.mcp_token);
+    }
+    if (step.includes('Vault') && tokenVaultInfo?.vault_token) {
+      return decodeJWT(tokenVaultInfo.vault_token);
+    }
+    return null;
+  };
+  
+  const decoded = getDecodedToken();
+  
+  return (
+    <div className="border-l-2 border-slate-800 hover:border-slate-600 transition-colors">
+      <div 
+        className="flex items-start gap-2 py-1.5 px-3 hover:bg-slate-800/30 cursor-pointer select-none"
+        onDoubleClick={() => setExpanded(!expanded)}
+      >
+        <span className="text-slate-600 w-20 flex-shrink-0 tabular-nums">{formatTime(entry.timestamp)}</span>
+        <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+          entry.status === 'success' ? 'bg-green-500' :
+          entry.status === 'error' ? 'bg-red-500' :
+          'bg-amber-500'
+        }`}></span>
+        <div className="flex-1 min-w-0">
+          <span className={`${
+            entry.step.includes('Salesforce') || entry.step.includes('search_salesforce') ? 'text-sky-400' :
+            entry.step.includes('Google') || entry.step.includes('Calendar') || entry.step.includes('list_calendar') ? 'text-rose-400' :
+            entry.step.includes('Tool:') ? 'text-amber-400' :
+            entry.step.includes('Error') ? 'text-red-400' :
+            entry.step.includes('ID-JAG') || entry.step.includes('MCP') || entry.step.includes('Vault') ? 'text-cyan-400' :
+            'text-slate-300'
+          }`}>
+            {entry.step}
+          </span>
+          {entry.details?.expiresIn && <span className="text-slate-600 ml-2">TTL:{entry.details.expiresIn}s</span>}
+          {entry.details?.connection && <span className="text-slate-600 ml-2">[{entry.details.connection}]</span>}
+          {decoded?.sub && <span className="text-slate-600 ml-2 truncate">sub:{decoded.sub.substring(0, 20)}...</span>}
+        </div>
+        <span className="text-slate-700 text-[10px]">{expanded ? '▼' : '▶'}</span>
+      </div>
+      
+      {expanded && (
+        <div className="pl-24 pr-3 pb-2 text-[11px] bg-slate-900/50 border-l-2 border-cyan-500/50">
+          {decoded && (
+            <div className="space-y-0.5 py-1">
+              {decoded.sub && <div><span className="text-slate-500">sub:</span> <span className="text-slate-300">{decoded.sub}</span></div>}
+              {decoded.aud && <div><span className="text-slate-500">aud:</span> <span className="text-slate-300">{Array.isArray(decoded.aud) ? decoded.aud.join(', ') : decoded.aud}</span></div>}
+              {decoded.scope && <div><span className="text-slate-500">scope:</span> <span className="text-green-400">{decoded.scope}</span></div>}
+              {decoded.scp && <div><span className="text-slate-500">scp:</span> <span className="text-green-400">{decoded.scp.join(', ')}</span></div>}
+              {decoded.iss && <div><span className="text-slate-500">iss:</span> <span className="text-slate-300">{decoded.iss}</span></div>}
+              {decoded.exp && <div><span className="text-slate-500">exp:</span> <span className="text-slate-300">{new Date(decoded.exp * 1000).toISOString()}</span></div>}
+            </div>
+          )}
+          {!decoded && entry.details && (
+            <div className="space-y-0.5 py-1 text-slate-400">
+              {entry.details.tokenType && <div>Type: {entry.details.tokenType}</div>}
+              {entry.details.expiresIn && <div>Expires: {entry.details.expiresIn}s</div>}
+              {entry.details.connection && <div>Connection: {entry.details.connection}</div>}
+            </div>
+          )}
+          {!decoded && !entry.details && (
+            <div className="py-1 text-slate-500 italic">No additional details</div>
           )}
         </div>
       )}
@@ -491,31 +598,9 @@ export default function SecurityFlowTab({
               </div>
             ) : (
               /* Logs View - Continuous flow like Render logs */
-              <div className="font-mono text-xs space-y-0.5">
+              <div className="font-mono text-xs">
                 {displayEvents.map((entry, index) => (
-                  <div 
-                    key={entry.id}
-                    className="flex items-start gap-2 py-1 px-2 hover:bg-slate-800/50 rounded cursor-pointer group"
-                    title="Double-click to expand"
-                  >
-                    <span className="text-slate-600 w-16 flex-shrink-0">{formatTime(entry.timestamp)}</span>
-                    <span className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
-                      entry.status === 'success' ? 'bg-green-500' :
-                      entry.status === 'error' ? 'bg-red-500' :
-                      'bg-amber-500'
-                    }`}></span>
-                    <span className={`flex-1 ${
-                      entry.step.includes('Salesforce') ? 'text-sky-400' :
-                      entry.step.includes('Google') || entry.step.includes('Calendar') ? 'text-rose-400' :
-                      entry.step.includes('Tool:') ? 'text-amber-400' :
-                      entry.step.includes('Error') ? 'text-red-400' :
-                      'text-slate-300'
-                    }`}>
-                      {entry.step}
-                      {entry.details?.expiresIn && <span className="text-slate-600 ml-2">TTL:{entry.details.expiresIn}s</span>}
-                      {entry.details?.connection && <span className="text-slate-600 ml-2">[{entry.details.connection}]</span>}
-                    </span>
-                  </div>
+                  <LogEntry key={entry.id} entry={entry} xaaInfo={xaaInfo} tokenVaultInfo={tokenVaultInfo} />
                 ))}
               </div>
             )}
