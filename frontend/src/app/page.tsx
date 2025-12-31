@@ -2,11 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import IdTokenCard from '@/components/IdTokenCard';
-import XAAFlowCard from '@/components/XAAFlowCard';
-import MCPToolsCard from '@/components/MCPToolsCard';
-import TokenVaultFlow from '@/components/TokenVaultFlow';
-import PromptLibrary from '@/components/PromptLibrary';
 import SecurityFlowTab from '@/components/SecurityFlowTab';
 import DemoGuideTab from '@/components/DemoGuideTab';
 
@@ -33,6 +28,92 @@ interface AuditEntry {
   rawToken?: string;
 }
 
+// Decode JWT helper
+function decodeJWT(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// Token Display Card Component
+function TokenDisplayCard({ 
+  title, 
+  token, 
+  color, 
+  icon,
+  description 
+}: { 
+  title: string; 
+  token?: string; 
+  color: string;
+  icon: string;
+  description: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const decoded = token ? decodeJWT(token) : null;
+  const isOpaqueToken = token && !decoded;
+
+  return (
+    <div className={`rounded-xl border ${color} overflow-hidden`}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{icon}</span>
+          <div className="text-left">
+            <span className="font-medium text-white text-sm">{title}</span>
+            {token && <span className="ml-2 text-xs text-green-400">✓</span>}
+          </div>
+        </div>
+        <svg
+          className={`w-4 h-4 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2">
+          <p className="text-xs text-slate-500">{description}</p>
+          
+          {token ? (
+            <>
+              {decoded && (
+                <div className="bg-slate-800/50 rounded-lg p-2">
+                  <p className="text-[10px] font-medium text-slate-400 mb-1">Decoded Claims</p>
+                  <pre className="text-[10px] text-slate-300 overflow-x-auto max-h-32 overflow-y-auto">
+                    {JSON.stringify(decoded, null, 2)}
+                  </pre>
+                </div>
+              )}
+              
+              <div className="bg-slate-900 rounded-lg p-2">
+                <p className="text-[10px] font-medium text-slate-400 mb-1">
+                  {isOpaqueToken ? 'Opaque Token' : 'Raw Token'}
+                </p>
+                <p className="text-[9px] text-slate-500 font-mono break-all line-clamp-2">
+                  {token.substring(0, 80)}...
+                </p>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-slate-600 italic">Not yet obtained</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ApexWealthAdvisor() {
   const { data: session, status } = useSession();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,7 +123,6 @@ export default function ApexWealthAdvisor() {
   const [lastXAAInfo, setLastXAAInfo] = useState<any>(null);
   const [lastTokenVaultInfo, setLastTokenVaultInfo] = useState<any>(null);
   const [lastToolsCalled, setLastToolsCalled] = useState<string[]>([]);
-  const [showPromptLibrary, setShowPromptLibrary] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<'agent' | 'security' | 'guide'>('agent');
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -101,7 +181,6 @@ export default function ApexWealthAdvisor() {
     setIsLoading(true);
     setIsTyping(true);
 
-    // Add audit entry for request
     addAuditEntry({
       step: 'User Request',
       status: 'success',
@@ -123,15 +202,11 @@ export default function ApexWealthAdvisor() {
 
       if (data.xaa_info) {
         setLastXAAInfo(data.xaa_info);
-        // Add XAA audit entries
         if (data.xaa_info.id_jag_token) {
           addAuditEntry({
             step: 'ID-JAG Token Exchange',
             status: 'success',
-            details: {
-              tokenType: 'ID-JAG',
-              expiresIn: data.xaa_info.id_jag_expires_in || 300
-            },
+            details: { tokenType: 'ID-JAG', expiresIn: data.xaa_info.id_jag_expires_in || 300 },
             rawToken: data.xaa_info.id_jag_token
           });
         }
@@ -139,11 +214,7 @@ export default function ApexWealthAdvisor() {
           addAuditEntry({
             step: 'MCP Auth Server Token',
             status: 'success',
-            details: {
-              tokenType: 'MCP Token',
-              expiresIn: data.xaa_info.mcp_token_expires_in || 3600,
-              scopes: ['mcp:read']
-            },
+            details: { tokenType: 'MCP Token', expiresIn: data.xaa_info.mcp_token_expires_in || 3600, scopes: ['mcp:read'] },
             rawToken: data.xaa_info.mcp_token
           });
         }
@@ -151,15 +222,11 @@ export default function ApexWealthAdvisor() {
       
       if (data.token_vault_info) {
         setLastTokenVaultInfo(data.token_vault_info);
-        // Add Token Vault audit entries
         if (data.token_vault_info.vault_token) {
           addAuditEntry({
             step: 'Auth0 Vault Token',
             status: 'success',
-            details: {
-              tokenType: 'Vault Token',
-              audience: 'vault.dell.auth101.dev'
-            },
+            details: { tokenType: 'Vault Token', audience: 'vault.dell.auth101.dev' },
             rawToken: data.token_vault_info.vault_token
           });
         }
@@ -167,11 +234,7 @@ export default function ApexWealthAdvisor() {
           addAuditEntry({
             step: 'Google Calendar Token',
             status: 'success',
-            details: {
-              tokenType: 'Google Access Token',
-              connection: 'google-oauth2',
-              expiresIn: data.token_vault_info.google_expires_in
-            },
+            details: { tokenType: 'Google Access Token', connection: 'google-oauth2', expiresIn: data.token_vault_info.google_expires_in },
             rawToken: data.token_vault_info.google_token
           });
         }
@@ -179,7 +242,6 @@ export default function ApexWealthAdvisor() {
       
       if (data.tools_called?.length > 0) {
         setLastToolsCalled(prev => [...new Set([...prev, ...data.tools_called])]);
-        // Add tool call audit entries
         data.tools_called.forEach((tool: string) => {
           addAuditEntry({
             step: `Tool: ${tool}`,
@@ -199,11 +261,7 @@ export default function ApexWealthAdvisor() {
 
     } catch (error) {
       setIsTyping(false);
-      addAuditEntry({
-        step: 'Error',
-        status: 'error',
-        details: { tokenType: 'Request Failed' }
-      });
+      addAuditEntry({ step: 'Error', status: 'error', details: { tokenType: 'Request Failed' } });
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -282,30 +340,30 @@ export default function ApexWealthAdvisor() {
     <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="border-b border-slate-800 bg-slate-900 flex-shrink-0">
-        <div className="px-4 py-2">
+        <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Left - Logo & Title */}
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center">
-                <span className="text-sm font-bold text-slate-900">AW</span>
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center">
+                <span className="text-lg font-bold text-slate-900">AW</span>
               </div>
               <div>
-                <h1 className="text-base font-bold text-white">Apex Wealth Advisor</h1>
+                <h1 className="text-lg font-bold text-white">Apex Wealth Advisor</h1>
                 <p className="text-xs text-slate-500">AI Agent Security Demo</p>
               </div>
             </div>
 
             {/* Center - Main Tabs */}
-            <div className="flex items-center space-x-1 bg-slate-800 rounded-lg p-1">
+            <div className="flex items-center space-x-1 bg-slate-800 rounded-xl p-1">
               {[
-                { id: 'agent', label: '🤖 Agent', icon: '🤖' },
-                { id: 'security', label: '🔐 Security Flow', icon: '🔐' },
-                { id: 'guide', label: '📖 Demo Guide', icon: '📖' },
+                { id: 'agent', label: '🤖 Agent' },
+                { id: 'security', label: '🔐 Security Flow' },
+                { id: 'guide', label: '📖 Demo Guide' },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveMainTab(tab.id as 'agent' | 'security' | 'guide')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all ${
                     activeMainTab === tab.id
                       ? 'bg-amber-500 text-slate-900'
                       : 'text-slate-400 hover:text-white hover:bg-slate-700'
@@ -317,34 +375,35 @@ export default function ApexWealthAdvisor() {
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
               {activeMainTab === 'agent' && (
-                <>
-                  <button
-                    onClick={() => setShowPromptLibrary(true)}
-                    className="px-3 py-1.5 text-xs font-medium bg-slate-800 text-amber-400 rounded-lg hover:bg-slate-700 transition-colors"
-                  >
-                    📚 Prompts
-                  </button>
-                  <button
-                    onClick={handleNewChat}
-                    className="px-3 py-1.5 text-xs font-medium bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
-                  >
-                    + New Chat
-                  </button>
-                </>
+                <button
+                  onClick={handleNewChat}
+                  className="px-4 py-2 text-sm font-semibold bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  + New Chat
+                </button>
               )}
+              
+              {/* Okta Branding */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-900/30 border border-blue-500/30 rounded-lg">
+                <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.389 0 0 5.389 0 12s5.389 12 12 12 12-5.389 12-12S18.611 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/>
+                </svg>
+                <span className="text-xs font-medium text-blue-400">Secured by Okta for AI Agents</span>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-xs text-slate-400">Online</span>
+                <span className="text-sm text-slate-400">Online</span>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-white">{session?.user?.name}</p>
+                <p className="text-sm font-semibold text-white">{session?.user?.name}</p>
                 <p className="text-xs text-slate-500">{session?.user?.email}</p>
               </div>
               <button 
                 onClick={() => signOut()} 
-                className="px-3 py-1 text-sm text-slate-400 hover:text-white transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-slate-400 hover:text-white transition-colors"
               >
                 Sign Out
               </button>
@@ -352,16 +411,6 @@ export default function ApexWealthAdvisor() {
           </div>
         </div>
       </header>
-
-      {/* Prompt Library Modal */}
-      <PromptLibrary
-        isOpen={showPromptLibrary}
-        onClose={() => setShowPromptLibrary(false)}
-        onSelectPrompt={(prompt) => {
-          setInput(prompt);
-          setShowPromptLibrary(false);
-        }}
-      />
 
       {/* Main Content - Tab Panels */}
       <main className="flex-1 overflow-hidden">
@@ -438,19 +487,82 @@ export default function ApexWealthAdvisor() {
               </div>
 
               {/* RIGHT: Token Flow Cards - 4 cols */}
-              <div className="col-span-4 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
-                <div className="p-2 space-y-2">
-                  {/* ID Token Card */}
-                  <IdTokenCard idToken={(session as any)?.idToken || ''} />
+              <div className="col-span-4 bg-slate-900 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
+                <div className="px-3 py-2 border-b border-slate-800">
+                  <h3 className="text-sm font-semibold text-white">🔐 Token Flow</h3>
+                  <p className="text-[10px] text-slate-500">Real-time security token chain</p>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {/* Step 1: Okta ID Token */}
+                  <TokenDisplayCard
+                    title="Okta ID Token"
+                    token={(session as any)?.idToken}
+                    color="border-blue-500/30 bg-blue-900/10"
+                    icon="👤"
+                    description="User authenticated via Okta SSO"
+                  />
                   
-                  {/* XAA Flow Card */}
-                  <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
+                  {/* Step 2: ID-JAG Token */}
+                  <TokenDisplayCard
+                    title="ID-JAG Token"
+                    token={lastXAAInfo?.id_jag_token}
+                    color="border-cyan-500/30 bg-cyan-900/10"
+                    icon="🔑"
+                    description="Identity Assertion Grant - 5min TTL"
+                  />
                   
-                  {/* Token Vault Flow Card */}
-                  <TokenVaultFlow tokenVaultInfo={lastTokenVaultInfo} isActive={lastToolsCalled.some(t => t.includes('calendar'))} />
+                  {/* Step 3: MCP Token */}
+                  <TokenDisplayCard
+                    title="MCP Token"
+                    token={lastXAAInfo?.mcp_token}
+                    color="border-green-500/30 bg-green-900/10"
+                    icon="🎫"
+                    description="Auth Server token for MCP Server"
+                  />
                   
-                  {/* MCP Tools Card */}
-                  <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
+                  {/* Step 4: Vault Token */}
+                  <TokenDisplayCard
+                    title="Auth0 Vault Token"
+                    token={lastTokenVaultInfo?.vault_token}
+                    color="border-purple-500/30 bg-purple-900/10"
+                    icon="🏦"
+                    description="Federated identity (Okta → Auth0)"
+                  />
+                  
+                  {/* Step 5: Google Token */}
+                  <TokenDisplayCard
+                    title="Google Token"
+                    token={lastTokenVaultInfo?.google_token}
+                    color="border-red-500/30 bg-red-900/10"
+                    icon="📅"
+                    description="User's Google Calendar access"
+                  />
+                  
+                  {/* Tools Called */}
+                  {lastToolsCalled.length > 0 && (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-900/10 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">⚡</span>
+                        <span className="font-medium text-white text-sm">Tools Called</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {lastToolsCalled.map((tool, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">
+                            ✓ {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Footer */}
+                <div className="px-3 py-2 border-t border-slate-800 bg-slate-950">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500">User-Delegated Access</span>
+                    <span className="text-[10px] text-green-400">● Active</span>
+                  </div>
                 </div>
               </div>
             </div>
