@@ -214,43 +214,47 @@ export default function SecurityFlowTab({
                 <span className="text-xs text-slate-400">Federated Token</span>
               </div>
               
-              {/* Show Google Calendar Token if calendar tools were used OR if we have a google token and no salesforce was used */}
-              {(usedCalendar || (tokenVaultInfo?.google_token && !usedSalesforce)) && (
+              {/* Show Google Calendar Token if calendar tools were used */}
+              {usedCalendar && (
                 <div className="mb-2">
                   <TokenCard 
                     title="Google Calendar Token" 
                     token={tokenVaultInfo?.google_token} 
                     color="border-rose-500/30 bg-rose-900/10" 
-                    stepNumber="5a"
+                    stepNumber="5"
                     icon="📅"
                   />
                 </div>
               )}
               
               {/* Show Salesforce Token if salesforce tools were used */}
-              {(usedSalesforce || (tokenVaultInfo?.salesforce_token && !usedCalendar)) && (
+              {usedSalesforce && (
                 <div className="mb-2">
                   <TokenCard 
                     title="Salesforce Token" 
                     token={tokenVaultInfo?.salesforce_token} 
                     color="border-sky-500/30 bg-sky-900/10" 
-                    stepNumber="5b"
+                    stepNumber="5"
                     icon="☁️"
                   />
                 </div>
               )}
               
-              {/* Show both if both were used in composite call */}
-              {usedCalendar && usedSalesforce && (
-                <div className="mt-2 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
-                  ⚡ Composite call: Both Google Calendar and Salesforce accessed
+              {/* Show Internal MCP message if only internal tools were used */}
+              {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 && (
+                <div className="p-3 rounded-lg border border-green-500/30 bg-green-900/10">
+                  <div className="flex items-center gap-2">
+                    <span>🔧</span>
+                    <span className="text-sm text-green-400 font-medium">Internal MCP Tools</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">No federated token needed - uses Okta XAA flow only</p>
                 </div>
               )}
               
-              {/* Fallback if no tokens yet */}
-              {!tokenVaultInfo?.google_token && !tokenVaultInfo?.salesforce_token && (
+              {/* Fallback if no tools called yet */}
+              {toolsCalled.length === 0 && (
                 <div className="p-3 rounded-lg border border-slate-700 bg-slate-800/50">
-                  <span className="text-xs text-slate-500">No federated tokens retrieved yet</span>
+                  <span className="text-xs text-slate-500">Make a request to see federated tokens</span>
                 </div>
               )}
             </div>
