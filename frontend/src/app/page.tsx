@@ -7,6 +7,8 @@ import XAAFlowCard from '@/components/XAAFlowCard';
 import MCPToolsCard from '@/components/MCPToolsCard';
 import TokenVaultFlow from '@/components/TokenVaultFlow';
 import PromptLibrary from '@/components/PromptLibrary';
+import SecurityFlowTab from '@/components/SecurityFlowTab';
+import DemoGuideTab from '@/components/DemoGuideTab';
 
 interface Message {
   id: string;
@@ -14,6 +16,21 @@ interface Message {
   content: string;
   timestamp: Date;
   toolsCalled?: string[];
+}
+
+interface AuditEntry {
+  id: string;
+  timestamp: Date;
+  step: string;
+  status: 'success' | 'pending' | 'error';
+  details: {
+    tokenType?: string;
+    audience?: string;
+    expiresIn?: number;
+    scopes?: string[];
+    connection?: string;
+  };
+  rawToken?: string;
 }
 
 export default function ApexWealthAdvisor() {
@@ -26,6 +43,8 @@ export default function ApexWealthAdvisor() {
   const [lastTokenVaultInfo, setLastTokenVaultInfo] = useState<any>(null);
   const [lastToolsCalled, setLastToolsCalled] = useState<string[]>([]);
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState<'agent' | 'security' | 'guide'>('agent');
+  const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,10 +71,19 @@ export default function ApexWealthAdvisor() {
     setLastXAAInfo(null);
     setLastTokenVaultInfo(null);
     setLastToolsCalled([]);
+    setAuditTrail([]);
     setTimeout(() => initializeWelcome(), 100);
   };
 
   const formatTime = (date: Date) => new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const addAuditEntry = (entry: Omit<AuditEntry, 'id' | 'timestamp'>) => {
+    setAuditTrail(prev => [...prev, {
+      ...entry,
+      id: Date.now().toString(),
+      timestamp: new Date()
+    }]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +101,13 @@ export default function ApexWealthAdvisor() {
     setIsLoading(true);
     setIsTyping(true);
 
+    // Add audit entry for request
+    addAuditEntry({
+      step: 'User Request',
+      status: 'success',
+      details: { tokenType: 'User Input' }
+    });
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -88,14 +123,70 @@ export default function ApexWealthAdvisor() {
 
       if (data.xaa_info) {
         setLastXAAInfo(data.xaa_info);
+        // Add XAA audit entries
+        if (data.xaa_info.id_jag_obtained) {
+          addAuditEntry({
+            step: 'ID-JAG Token Exchange',
+            status: 'success',
+            details: {
+              tokenType: 'ID-JAG',
+              expiresIn: data.xaa_info.id_jag_expires_in || 300
+            },
+            rawToken: data.xaa_info.id_jag_token
+          });
+        }
+        if (data.xaa_info.mcp_token_obtained) {
+          addAuditEntry({
+            step: 'MCP Auth Server Token',
+            status: 'success',
+            details: {
+              tokenType: 'MCP Token',
+              expiresIn: data.xaa_info.mcp_token_expires_in || 3600,
+              scopes: ['mcp:read']
+            },
+            rawToken: data.xaa_info.mcp_token
+          });
+        }
       }
       
       if (data.token_vault_info) {
         setLastTokenVaultInfo(data.token_vault_info);
+        // Add Token Vault audit entries
+        if (data.token_vault_info.vault_token_obtained) {
+          addAuditEntry({
+            step: 'Auth0 Vault Token',
+            status: 'success',
+            details: {
+              tokenType: 'Vault Token',
+              audience: 'vault.dell.auth101.dev'
+            },
+            rawToken: data.token_vault_info.vault_token
+          });
+        }
+        if (data.token_vault_info.google_token_obtained) {
+          addAuditEntry({
+            step: 'Google Calendar Token',
+            status: 'success',
+            details: {
+              tokenType: 'Google Access Token',
+              connection: 'google-oauth2',
+              expiresIn: data.token_vault_info.google_expires_in
+            },
+            rawToken: data.token_vault_info.google_token
+          });
+        }
       }
       
       if (data.tools_called?.length > 0) {
         setLastToolsCalled(prev => [...new Set([...prev, ...data.tools_called])]);
+        // Add tool call audit entries
+        data.tools_called.forEach((tool: string) => {
+          addAuditEntry({
+            step: `Tool: ${tool}`,
+            status: 'success',
+            details: { tokenType: 'Tool Execution' }
+          });
+        });
       }
 
       setMessages(prev => [...prev, {
@@ -108,6 +199,11 @@ export default function ApexWealthAdvisor() {
 
     } catch (error) {
       setIsTyping(false);
+      addAuditEntry({
+        step: 'Error',
+        status: 'error',
+        details: { tokenType: 'Request Failed' }
+      });
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -181,7 +277,7 @@ export default function ApexWealthAdvisor() {
     );
   }
 
-  // Main Application - 3 Column Layout
+  // Main Application with Tabs
   return (
     <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
@@ -194,37 +290,50 @@ export default function ApexWealthAdvisor() {
                 <span className="text-sm font-bold text-slate-900">AW</span>
               </div>
               <div>
-                <h1 className="text-sm font-bold text-white">Apex Wealth Advisor</h1>
-                <p className="text-xs text-slate-500">AI Assistant</p>
+                <h1 className="text-base font-bold text-white">Apex Wealth Advisor</h1>
+                <p className="text-xs text-slate-500">AI Agent Security Demo</p>
               </div>
             </div>
 
-            {/* Center - Actions */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleNewChat}
-                className="px-3 py-1.5 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                New Chat
-              </button>
-              <button
-                onClick={() => setShowPromptLibrary(!showPromptLibrary)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1 ${
-                  showPromptLibrary ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 text-white hover:bg-slate-700'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                Prompts
-              </button>
+            {/* Center - Main Tabs */}
+            <div className="flex items-center space-x-1 bg-slate-800 rounded-lg p-1">
+              {[
+                { id: 'agent', label: '🤖 Agent', icon: '🤖' },
+                { id: 'security', label: '🔐 Security Flow', icon: '🔐' },
+                { id: 'guide', label: '📖 Demo Guide', icon: '📖' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveMainTab(tab.id as 'agent' | 'security' | 'guide')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                    activeMainTab === tab.id
+                      ? 'bg-amber-500 text-slate-900'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {/* Right - User & Status */}
-            <div className="flex items-center space-x-4">
+            {/* Right Actions */}
+            <div className="flex items-center space-x-3">
+              {activeMainTab === 'agent' && (
+                <>
+                  <button
+                    onClick={() => setShowPromptLibrary(true)}
+                    className="px-3 py-1.5 text-xs font-medium bg-slate-800 text-amber-400 rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    📚 Prompts
+                  </button>
+                  <button
+                    onClick={handleNewChat}
+                    className="px-3 py-1.5 text-xs font-medium bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    + New Chat
+                  </button>
+                </>
+              )}
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-xs text-slate-400">Online</span>
@@ -254,159 +363,179 @@ export default function ApexWealthAdvisor() {
         }}
       />
 
-      {/* Main 3-Column Grid */}
-      <main className="flex-1 overflow-hidden p-2">
-        <div className="h-full grid grid-cols-12 gap-2">
-          
-          {/* LEFT: Chat - 50% (6 cols) */}
-          <div className="col-span-6 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                {messages.map((msg) => (
-                  <div key={msg.id}>
-                    {msg.role === 'user' ? (
-                      <div className="flex justify-end">
-                        <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-md">
-                          <p className="text-sm">{msg.content}</p>
-                          <p className="text-xs text-amber-800 mt-1">{formatTime(msg.timestamp)}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm p-4 max-w-2xl">
-                        <p className="text-sm text-slate-200 whitespace-pre-wrap">{msg.content}</p>
-                        {msg.toolsCalled && msg.toolsCalled.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-slate-700 flex flex-wrap gap-1">
-                            {msg.toolsCalled.map((tool, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded">
-                                ✓ {tool}
-                              </span>
-                            ))}
+      {/* Main Content - Tab Panels */}
+      <main className="flex-1 overflow-hidden">
+        {/* TAB 1: Agent (Original 3-column layout) */}
+        {activeMainTab === 'agent' && (
+          <div className="h-full p-2">
+            <div className="h-full grid grid-cols-12 gap-2">
+              
+              {/* LEFT: Chat - 50% (6 cols) */}
+              <div className="col-span-6 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="space-y-4">
+                    {messages.map((msg) => (
+                      <div key={msg.id}>
+                        {msg.role === 'user' ? (
+                          <div className="flex justify-end">
+                            <div className="bg-amber-500 text-slate-900 px-4 py-3 rounded-2xl rounded-br-sm max-w-md">
+                              <p className="text-sm">{msg.content}</p>
+                              <p className="text-xs text-amber-800 mt-1">{formatTime(msg.timestamp)}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm p-4 max-w-2xl">
+                            <p className="text-sm text-slate-200 whitespace-pre-wrap">{msg.content}</p>
+                            {msg.toolsCalled && msg.toolsCalled.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-slate-700 flex flex-wrap gap-1">
+                                {msg.toolsCalled.map((tool, i) => (
+                                  <span key={i} className="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded">
+                                    ✓ {tool}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-xs text-slate-500 mt-2">{formatTime(msg.timestamp)}</p>
                           </div>
                         )}
-                        <p className="text-xs text-slate-500 mt-2">{formatTime(msg.timestamp)}</p>
+                      </div>
+                    ))}
+                    {isTyping && (
+                      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 max-w-md">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        </div>
                       </div>
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
-                ))}
-                {isTyping && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 max-w-md">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                      <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+
+                {/* Input */}
+                <div className="border-t border-slate-800 p-3 bg-slate-900">
+                  <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+                    <input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Ask about clients, portfolios, calendar, transactions..."
+                      className="flex-1 p-3 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-white placeholder-slate-500 text-sm"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLoading || !input.trim()}
+                      className="p-3 bg-amber-500 text-slate-900 rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* CENTER: Architecture Visual - 25% (3 cols) */}
+              <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 p-4 overflow-y-auto">
+                <h3 className="text-sm font-semibold text-white mb-4">Security Flow</h3>
+                
+                {/* Visual Flow */}
+                <div className="space-y-4">
+                  {/* User */}
+                  <div className="flex items-center justify-center">
+                    <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-sm font-medium">
+                      👤 {session?.user?.name || 'User'}
                     </div>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
+                  
+                  <div className="flex justify-center">
+                    <div className="w-0.5 h-8 bg-slate-600"></div>
+                  </div>
 
-            {/* Input */}
-            <div className="border-t border-slate-800 p-3 bg-slate-900">
-              <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about clients, portfolios, calendar, transactions..."
-                  className="flex-1 p-3 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-white placeholder-slate-500 text-sm"
-                  disabled={isLoading}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="p-3 bg-amber-500 text-slate-900 rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
-              </form>
-            </div>
-          </div>
+                  {/* Identity Provider */}
+                  <div className="flex items-center justify-center">
+                    <div className="px-6 py-3 bg-blue-600 rounded-xl text-white text-center">
+                      <p className="font-semibold text-sm">Okta</p>
+                      <p className="text-xs text-blue-200">XAA / ID-JAG</p>
+                    </div>
+                  </div>
 
-          {/* CENTER: Architecture Visual - 25% (3 cols) */}
-          <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 p-4 overflow-y-auto">
-            <h3 className="text-sm font-semibold text-white mb-4">Security Flow</h3>
-            
-            {/* Visual Flow */}
-            <div className="space-y-4">
-              {/* User */}
-              <div className="flex items-center justify-center">
-                <div className="px-4 py-2 bg-green-600 rounded-lg text-white text-sm font-medium">
-                  👤 {session?.user?.name || 'User'}
-                </div>
-              </div>
-              
-              <div className="flex justify-center">
-                <div className="w-0.5 h-8 bg-slate-600"></div>
-              </div>
+                  <div className="flex justify-center">
+                    <div className="w-0.5 h-8 bg-slate-600"></div>
+                  </div>
 
-              {/* Identity Provider */}
-              <div className="flex items-center justify-center">
-                <div className="px-6 py-3 bg-blue-600 rounded-xl text-white text-center">
-                  <p className="font-semibold text-sm">Okta</p>
-                  <p className="text-xs text-blue-200">XAA / ID-JAG</p>
-                </div>
-              </div>
+                  {/* AI Agent */}
+                  <div className="flex items-center justify-center">
+                    <div className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
+                      <p className="font-semibold text-slate-900">🤖 Buffett</p>
+                      <p className="text-xs text-slate-800">AI Agent</p>
+                    </div>
+                  </div>
 
-              <div className="flex justify-center">
-                <div className="w-0.5 h-8 bg-slate-600"></div>
-              </div>
+                  <div className="flex justify-center">
+                    <div className="w-0.5 h-8 bg-slate-600"></div>
+                  </div>
 
-              {/* AI Agent */}
-              <div className="flex items-center justify-center">
-                <div className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-center">
-                  <p className="font-semibold text-slate-900">🤖 Buffett</p>
-                  <p className="text-xs text-slate-800">AI Agent</p>
-                </div>
-              </div>
+                  {/* Backend Services */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
+                      <p className="text-xs font-medium text-white">MCP Server</p>
+                      <p className="text-xs text-green-400">Okta XAA</p>
+                    </div>
+                    <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
+                      <p className="text-xs font-medium text-white">Google Cal</p>
+                      <p className="text-xs text-purple-400">Token Vault</p>
+                    </div>
+                  </div>
 
-              <div className="flex justify-center">
-                <div className="w-0.5 h-8 bg-slate-600"></div>
-              </div>
-
-              {/* Backend Services */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                  <p className="text-xs font-medium text-white">MCP Server</p>
-                  <p className="text-xs text-green-400">Okta XAA</p>
-                </div>
-                <div className="p-3 bg-slate-800 rounded-lg text-center border border-slate-700">
-                  <p className="text-xs font-medium text-white">Google Cal</p>
-                  <p className="text-xs text-purple-400">Token Vault</p>
-                </div>
-              </div>
-
-              {/* Auth0 */}
-              <div className="mt-4 pt-4 border-t border-slate-700">
-                <div className="flex items-center justify-center">
-                  <div className="px-4 py-2 bg-purple-600 rounded-xl text-white text-center">
-                    <p className="font-semibold text-sm">Auth0</p>
-                    <p className="text-xs text-purple-200">Token Vault</p>
+                  {/* Auth0 */}
+                  <div className="mt-4 pt-4 border-t border-slate-700">
+                    <div className="flex items-center justify-center">
+                      <div className="px-4 py-2 bg-purple-600 rounded-xl text-white text-center">
+                        <p className="font-semibold text-sm">Auth0</p>
+                        <p className="text-xs text-purple-200">Token Vault</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* RIGHT: Token Flow Cards - 25% (3 cols) */}
-          <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
-            <div className="p-2 space-y-2">
-              {/* ID Token Card */}
-              <IdTokenCard idToken={(session as any)?.idToken || ''} />
-              
-              {/* XAA Flow Card */}
-              <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
-              
-              {/* Token Vault Flow Card */}
-              <TokenVaultFlow tokenVaultInfo={lastTokenVaultInfo} isActive={lastToolsCalled.some(t => t.includes('calendar'))} />
-              
-              {/* MCP Tools Card */}
-              <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
+              {/* RIGHT: Token Flow Cards - 25% (3 cols) */}
+              <div className="col-span-3 bg-slate-900 rounded-xl border border-slate-800 overflow-y-auto">
+                <div className="p-2 space-y-2">
+                  {/* ID Token Card */}
+                  <IdTokenCard idToken={(session as any)?.idToken || ''} />
+                  
+                  {/* XAA Flow Card */}
+                  <XAAFlowCard xaaInfo={lastXAAInfo} toolsCalled={lastToolsCalled} />
+                  
+                  {/* Token Vault Flow Card */}
+                  <TokenVaultFlow tokenVaultInfo={lastTokenVaultInfo} isActive={lastToolsCalled.some(t => t.includes('calendar'))} />
+                  
+                  {/* MCP Tools Card */}
+                  <MCPToolsCard toolsCalled={lastToolsCalled} mcpServer="apex-wealth-mcp" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* TAB 2: Security Flow */}
+        {activeMainTab === 'security' && (
+          <SecurityFlowTab 
+            session={session}
+            auditTrail={auditTrail}
+            xaaInfo={lastXAAInfo}
+            tokenVaultInfo={lastTokenVaultInfo}
+          />
+        )}
+
+        {/* TAB 3: Demo Guide */}
+        {activeMainTab === 'guide' && (
+          <DemoGuideTab />
+        )}
       </main>
     </div>
   );

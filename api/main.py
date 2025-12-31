@@ -222,14 +222,18 @@ async def chat(request: ChatRequest, http_request: Request):
             xaa_info={
                 "configured": xaa_manager.is_configured(),
                 "token_obtained": bool(mcp_token_info),
-                "id_jag_token": mcp_token_info.get("id_jag_token", "")[:50] + "..." if mcp_token_info else None,
-                "mcp_access_token": mcp_token_info.get("access_token", "")[:50] + "..." if mcp_token_info else None,
-                "expires_in": mcp_token_info.get("expires_in") if mcp_token_info else None,
+                "id_jag_token": mcp_token_info.get("id_jag_token") if mcp_token_info else None,
+                "mcp_token": mcp_token_info.get("access_token") if mcp_token_info else None,
+                "id_jag_expires_in": 300,
+                "mcp_token_expires_in": mcp_token_info.get("expires_in") if mcp_token_info else None,
                 "scope": mcp_token_info.get("scope") if mcp_token_info else None
             } if mcp_token_info or xaa_manager.is_configured() else None,
             token_vault_info={
                 "configured": token_vault.is_configured(),
                 "google_token_obtained": bool(google_token_info),
+                "vault_token": vault_token if vault_token else None,
+                "google_token": google_token_info.get("access_token") if google_token_info else None,
+                "google_expires_in": google_token_info.get("expires_in") if google_token_info else None,
                 "connection": "google-oauth2"
             } if google_token_info or token_vault.is_configured() else None
         )
