@@ -616,10 +616,67 @@ class GoogleCalendarTools:
             }
     
     async def _cancel_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
-        """Cancel a calendar event"""
+        """Cancel a calendar event - searches by title/date if no valid event_id"""
         event_id = args.get("event_id")
+        event_title = args.get("title", args.get("event_title", ""))
+        event_date = args.get("date", args.get("event_date", ""))
         
-        if google_token:
+        # If event_id looks fake (our generated format), search for the real event first
+        if google_token and (not event_id or event_id.startswith("CAL_") or len(event_id) > 50):
+            logger.info(f"[Google Calendar] Searching for event to cancel: title='{event_title}', date='{event_date}'")
+            
+            # Search for the event
+            try:
+                # List upcoming events
+                now = datetime.now(timezone.utc)
+                time_min = (now - timedelta(days=1)).isoformat()
+                time_max = (now + timedelta(days=60)).isoformat()
+                
+                params = {
+                    "timeMin": time_min,
+                    "timeMax": time_max,
+                    "singleEvents": True,
+                    "orderBy": "startTime",
+                    "maxResults": 100
+                }
+                
+                result = await self._call_google_api("GET", "/calendars/primary/events", google_token, params=params)
+                events = result.get("items", [])
+                
+                # Search for matching event
+                search_terms = []
+                if event_title:
+                    search_terms.extend(event_title.lower().split())
+                if event_date:
+                    # Extract date parts for matching
+                    date_parts = re.findall(r'\d+', event_date)
+                    search_terms.extend(date_parts)
+                
+                for event in events:
+                    summary = event.get("summary", "").lower()
+                    start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
+                    
+                    # Check if event matches search criteria
+                    matches = 0
+                    for term in search_terms:
+                        if term in summary or term in start:
+                            matches += 1
+                    
+                    # If good match found, use this event's ID
+                    if matches >= 2 or (event_title and event_title.lower() in summary):
+                        event_id = event.get("id")
+                        logger.info(f"[Google Calendar] Found matching event: '{event.get('summary')}' with ID {event_id}")
+                        break
+                
+                if not event_id or event_id.startswith("CAL_"):
+                    logger.warning(f"[Google Calendar] Could not find event matching: title='{event_title}', date='{event_date}'")
+                    return {"error": "not_found", "message": f"Could not find event matching '{event_title}' on {event_date}"}
+                    
+            except Exception as e:
+                logger.error(f"[Google Calendar] Error searching for event: {e}")
+                return {"error": "search_failed", "message": str(e)}
+        
+        if google_token and event_id and not event_id.startswith("CAL_"):
             try:
                 logger.info(f"[Google Calendar] Cancelling event: {event_id}")
                 await self._call_google_api(
