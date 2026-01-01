@@ -235,27 +235,30 @@ export default function ApexWealthAdvisor() {
   if (!session) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full">
-          <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-10 text-center">
-            <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl font-bold text-slate-900">AW</span>
+        <div className="max-w-lg w-full">
+          <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-800 p-14 text-center">
+            <div className="w-28 h-28 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
+              <span className="text-5xl font-bold text-slate-900">AW</span>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Welcome to Apex Wealth Advisor</h1>
-            <p className="text-slate-400 mb-8">AI-Powered Portfolio Management</p>
+            <h1 className="text-3xl font-bold text-white mb-3">Welcome to Apex Wealth Advisor</h1>
+            <p className="text-lg text-slate-400 mb-10">AI-Powered Portfolio Management</p>
 
             <button
               onClick={() => signIn('okta')}
-              className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 rounded-xl font-semibold hover:from-amber-600 hover:to-amber-700 transition-all flex items-center justify-center gap-3"
+              className="w-full py-5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 rounded-xl font-semibold text-lg hover:from-amber-600 hover:to-amber-700 transition-all flex items-center justify-center gap-3"
             >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.8a7.2 7.2 0 110 14.4 7.2 7.2 0 010-14.4z"/>
               </svg>
               Sign in with Okta
             </button>
 
-            <div className="mt-8 pt-8 border-t border-slate-800">
-              <p className="text-base font-medium text-slate-300">
+            <div className="mt-10 pt-8 border-t border-slate-800">
+              <p className="text-lg font-medium text-slate-300 mb-2">
                 🔐 Secured by Okta for AI Agents
+              </p>
+              <p className="text-sm text-amber-400 font-medium tracking-wide">
+                Enterprise-Grade Agentic Security
               </p>
             </div>
           </div>
