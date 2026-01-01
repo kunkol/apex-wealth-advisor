@@ -328,6 +328,9 @@ function TokenCard({ title, token, color, stepNumber, icon, wasUsed, isOpaque, c
           <div className="mt-2 space-y-2">
             {token ? (
               <>
+                {/* Additional children content - FIRST (above Raw Token) */}
+                {children}
+                
                 {/* Raw Token */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -358,9 +361,6 @@ function TokenCard({ title, token, color, stepNumber, icon, wasUsed, isOpaque, c
                     </pre>
                   </div>
                 )}
-                
-                {/* Additional children content */}
-                {children}
               </>
             ) : (
               <div className="bg-slate-800/50 rounded p-2">
@@ -817,15 +817,10 @@ export default function SecurityFlowTab({
               >
                 {/* ID-JAG Secure Flow - Inside TokenCard expansion */}
                 {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
-                  <div className="mt-3 p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
+                  <div className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-cyan-400 text-xs">●</span>
                       <span className="text-xs font-semibold text-cyan-400">ID-JAG Secure Flow</span>
-                    </div>
-                    
-                    {/* Chat Assistant Steps */}
-                    <div className="mb-2">
-                      <span className="text-[9px] font-medium text-cyan-400 px-1.5 py-0.5 bg-cyan-500/20 rounded">Chat Assistant (STEPS 1-3)</span>
                     </div>
                     
                     <div className="space-y-0">
@@ -857,29 +852,10 @@ export default function SecurityFlowTab({
                       <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
                           <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
-                          <div className="w-0.5 h-4 bg-cyan-500/30"></div>
-                        </div>
-                        <div className="pb-1">
-                          <p className="text-[10px] font-medium text-white">ID-JAG → MCP Token</p>
-                          <p className="text-[8px] text-slate-400">Exchange ID-JAG for authorization server token</p>
-                        </div>
-                      </div>
-                      
-                      {/* MCP Server Step */}
-                      <div className="mt-1 mb-1">
-                        <span className="text-[9px] font-medium text-amber-400 px-1.5 py-0.5 bg-amber-500/20 rounded">MCP Server (STEP 4)</span>
-                      </div>
-                      
-                      {/* Step 4 */}
-                      <div className="flex items-start gap-2">
-                        <div className="flex flex-col items-center">
-                          <div className="w-4 h-4 rounded-full bg-amber-500 text-white text-[8px] flex items-center justify-center font-bold">4</div>
                         </div>
                         <div>
-                          <p className="text-[10px] font-medium text-white">Validate & Execute</p>
-                          <p className="text-[8px] text-slate-400">
-                            Verified access. Executing: {toolsCalled.length > 0 ? toolsCalled[toolsCalled.length - 1] : 'pending'}
-                          </p>
+                          <p className="text-[10px] font-medium text-white">ID-JAG → MCP Token</p>
+                          <p className="text-[8px] text-slate-400">Exchange ID-JAG for authorization server token</p>
                         </div>
                       </div>
                     </div>
