@@ -341,6 +341,18 @@ export default function ApexWealthAdvisor() {
               >
                 <span>📖</span> Demo Guide
               </button>
+              <button
+                onClick={() => setShowPromptLibrary(true)}
+                className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white"
+              >
+                <span>📋</span> Prompts
+              </button>
+              <button
+                onClick={handleNewChat}
+                className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+              >
+                <span>+</span> New Chat
+              </button>
             </div>
 
             {/* Right side */}
