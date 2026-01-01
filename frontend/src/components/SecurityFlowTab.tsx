@@ -812,6 +812,77 @@ export default function SecurityFlowTab({
                 stepNumber={2}
                 icon="🔑"
               />
+              
+              {/* ID-JAG Secure Flow - Expandable */}
+              {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
+                <details className="mt-2">
+                  <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300 flex items-center gap-1">
+                    <span>▶</span> ID-JAG Secure Flow
+                  </summary>
+                  <div className="mt-2 p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
+                    {/* Chat Assistant Steps */}
+                    <div className="mb-3">
+                      <span className="text-[10px] font-medium text-cyan-400 px-2 py-0.5 bg-cyan-500/20 rounded">Chat Assistant (STEPS 1-3)</span>
+                    </div>
+                    
+                    <div className="space-y-0">
+                      {/* Step 1 */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">1</div>
+                          <div className="w-0.5 h-5 bg-cyan-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[11px] font-medium text-white">ID → ID-JAG</p>
+                          <p className="text-[9px] text-slate-400">Exchange user ID token for ID-JAG token</p>
+                        </div>
+                      </div>
+                      
+                      {/* Step 2 */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">2</div>
+                          <div className="w-0.5 h-5 bg-cyan-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[11px] font-medium text-white">Verify ID-JAG</p>
+                          <p className="text-[9px] text-slate-400">Validate ID-JAG token (audit trail)</p>
+                        </div>
+                      </div>
+                      
+                      {/* Step 3 */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">3</div>
+                          <div className="w-0.5 h-5 bg-cyan-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[11px] font-medium text-white">ID-JAG → MCP Token</p>
+                          <p className="text-[9px] text-slate-400">Exchange ID-JAG for authorization server token</p>
+                        </div>
+                      </div>
+                      
+                      {/* MCP Server Step */}
+                      <div className="mt-2 mb-2">
+                        <span className="text-[10px] font-medium text-amber-400 px-2 py-0.5 bg-amber-500/20 rounded">MCP Server (STEP 4)</span>
+                      </div>
+                      
+                      {/* Step 4 */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">4</div>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-medium text-white">Validate & Execute</p>
+                          <p className="text-[9px] text-slate-400">
+                            Verified access. Executing: {toolsCalled.length > 0 ? toolsCalled[toolsCalled.length - 1] : 'pending'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              )}
             </div>
 
             {/* Step 3: MCP Token */}
@@ -898,118 +969,69 @@ export default function SecurityFlowTab({
                 </div>
               )}
             </div>
-            
-            {/* MCP Flow Card */}
+
+            {/* Step 6: MCP Flow */}
             {toolsCalled.length > 0 && (
-              <div className="mt-4 p-3 rounded-xl border border-purple-500/30 bg-purple-900/10">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-purple-400">●</span>
-                  <span className="text-sm font-semibold text-white">MCP Flow</span>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-mono px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Step 6</span>
+                  <span className="text-xs text-slate-400">Tool Execution</span>
                 </div>
-                
-                <div className="space-y-2">
-                  {/* MCP Server */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 w-20">MCP Server</span>
-                    <div className="flex items-center gap-2 px-2 py-1 bg-slate-800 rounded">
-                      <span className="text-amber-400">🏢</span>
-                      <span className="text-xs text-white font-medium">
-                        {toolsCalled.some(t => CALENDAR_TOOLS.includes(t)) ? 'Google Calendar API' :
-                         toolsCalled.some(t => SALESFORCE_TOOLS.includes(t)) ? 'Salesforce CRM' :
-                         'Apex Wealth MCP'}
-                      </span>
+                <div className="rounded-lg border border-purple-500/30 bg-purple-900/10 overflow-hidden">
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-purple-400">⚡</span>
+                      <span className="text-sm font-medium text-white">MCP Flow</span>
+                      <span className="text-green-400 text-xs ml-auto">✓ Executed</span>
                     </div>
-                  </div>
-                  
-                  {/* Tools Executed */}
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs text-slate-500 w-20 pt-1">Tools</span>
-                    <div className="flex flex-wrap gap-1">
-                      {toolsCalled.map((tool, i) => (
-                        <span 
-                          key={i}
-                          className={`text-xs px-2 py-0.5 rounded font-mono ${
-                            CALENDAR_TOOLS.includes(tool) ? 'bg-rose-500/20 text-rose-400' :
-                            SALESFORCE_TOOLS.includes(tool) ? 'bg-sky-500/20 text-sky-400' :
-                            'bg-emerald-500/20 text-emerald-400'
-                          }`}
-                        >
-                          {tool}
+                    
+                    {/* MCP Server */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-slate-500 w-16">Server</span>
+                      <div className="flex items-center gap-2 px-2 py-1 bg-slate-800 rounded">
+                        <span className="text-amber-400">🏢</span>
+                        <span className="text-xs text-white font-medium">
+                          {toolsCalled.some(t => CALENDAR_TOOLS.includes(t)) ? 'Google Calendar API' :
+                           toolsCalled.some(t => SALESFORCE_TOOLS.includes(t)) ? 'Salesforce CRM' :
+                           'Apex Wealth MCP'}
                         </span>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* ID-JAG Secure Flow Stepper */}
-            {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
-              <div className="mt-4 p-3 rounded-xl border border-cyan-500/30 bg-cyan-900/10">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-cyan-400">●</span>
-                  <span className="text-sm font-semibold text-white">ID-JAG Secure Flow</span>
-                </div>
-                
-                {/* Chat Assistant Steps */}
-                <div className="mb-3">
-                  <span className="text-[10px] font-medium text-cyan-400 px-2 py-0.5 bg-cyan-500/20 rounded">Chat Assistant (STEPS 1-3)</span>
-                </div>
-                
-                <div className="space-y-0">
-                  {/* Step 1 */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center font-bold">1</div>
-                      <div className="w-0.5 h-6 bg-cyan-500/30"></div>
-                    </div>
-                    <div className="pb-2">
-                      <p className="text-xs font-medium text-white">ID → ID-JAG</p>
-                      <p className="text-[10px] text-slate-400">Exchange user ID token for ID-JAG token</p>
+                    
+                    {/* Tools Executed */}
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-slate-500 w-16 pt-1">Tools</span>
+                      <div className="flex flex-wrap gap-1">
+                        {toolsCalled.map((tool, i) => (
+                          <span 
+                            key={i}
+                            className={`text-xs px-2 py-0.5 rounded font-mono ${
+                              CALENDAR_TOOLS.includes(tool) ? 'bg-rose-500/20 text-rose-400' :
+                              SALESFORCE_TOOLS.includes(tool) ? 'bg-sky-500/20 text-sky-400' :
+                              'bg-emerald-500/20 text-emerald-400'
+                            }`}
+                          >
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Step 2 */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center font-bold">2</div>
-                      <div className="w-0.5 h-6 bg-cyan-500/30"></div>
+                  {/* Expandable details */}
+                  <details className="border-t border-purple-500/20">
+                    <summary className="px-3 py-2 text-xs text-purple-400 cursor-pointer hover:text-purple-300 bg-purple-900/20">
+                      View execution details
+                    </summary>
+                    <div className="px-3 pb-3 bg-purple-900/20">
+                      <div className="text-[10px] text-slate-400 space-y-1">
+                        <p>• Token validated by MCP server</p>
+                        <p>• Scopes verified: mcp:read</p>
+                        <p>• User identity: {session?.user?.email || 'Authenticated user'}</p>
+                        <p>• Access level: User-delegated permissions</p>
+                      </div>
                     </div>
-                    <div className="pb-2">
-                      <p className="text-xs font-medium text-white">Verify ID-JAG</p>
-                      <p className="text-[10px] text-slate-400">Validate ID-JAG token (audit trail)</p>
-                    </div>
-                  </div>
-                  
-                  {/* Step 3 */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center font-bold">3</div>
-                      <div className="w-0.5 h-6 bg-cyan-500/30"></div>
-                    </div>
-                    <div className="pb-2">
-                      <p className="text-xs font-medium text-white">ID-JAG → MCP Token</p>
-                      <p className="text-[10px] text-slate-400">Exchange ID-JAG for authorization server token</p>
-                    </div>
-                  </div>
-                  
-                  {/* MCP Server Step */}
-                  <div className="mt-2 mb-2">
-                    <span className="text-[10px] font-medium text-amber-400 px-2 py-0.5 bg-amber-500/20 rounded">MCP Server (STEP 4)</span>
-                  </div>
-                  
-                  {/* Step 4 */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center font-bold">4</div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-white">Validate & Execute</p>
-                      <p className="text-[10px] text-slate-400">
-                        Verified access. Executing: {toolsCalled.length > 0 ? toolsCalled[toolsCalled.length - 1] : 'pending'}
-                      </p>
-                    </div>
-                  </div>
+                  </details>
                 </div>
               </div>
             )}
