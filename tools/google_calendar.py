@@ -702,7 +702,7 @@ class GoogleCalendarTools:
                     start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
                     
                     # Convert event start time to PST for comparison
-                    # Events come back in format like "2026-01-13T06:00:00Z" or "2026-01-12T14:00:00-08:00"
+                    # Events come back in format like "2026-01-13T06:00:00Z" or "2026-01-16T03:30:00+05:30"
                     event_date_str = start.split("T")[0] if "T" in start else start
                     
                     # If the event has a timezone offset or is in UTC, convert to PST date
@@ -716,9 +716,13 @@ class GoogleCalendarTools:
                                 pst_dt = event_dt - timedelta(hours=8)
                                 event_date_str = pst_dt.strftime("%Y-%m-%d")
                             elif "+" in start or (start.count("-") > 2):
-                                # Has timezone offset
+                                # Has timezone offset - convert to PST
                                 event_dt = datetime.fromisoformat(start)
-                                event_date_str = event_dt.strftime("%Y-%m-%d")
+                                # Convert to UTC first, then to PST
+                                utc_dt = event_dt - timedelta(hours=event_dt.utcoffset().total_seconds() / 3600) if event_dt.utcoffset() else event_dt
+                                pst_dt = utc_dt - timedelta(hours=8)
+                                event_date_str = pst_dt.strftime("%Y-%m-%d")
+                                logger.info(f"[Google Calendar] Event '{summary[:30]}' converted: {start} -> PST date {event_date_str}")
                         except Exception as e:
                             logger.warning(f"[Google Calendar] Could not parse event date: {start}, error: {e}")
                     
