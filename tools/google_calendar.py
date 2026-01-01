@@ -354,15 +354,33 @@ class GoogleCalendarTools:
         except:
             pass
         
-        # Extract time component (e.g., "11am", "2pm", "14:00")
-        time_match = re.search(r'(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', start_time_lower)
+        # Extract time component FIRST - look for patterns like "10am", "2pm", "at 10am", "at 2:30pm"
+        # Must have am/pm or be preceded by "at" to distinguish from date numbers
         hour = 14  # Default 2pm
         minute = 0
         
+        # Pattern: "at X" or "Xam" or "Xpm" or "X:XX"
+        time_match = re.search(r'(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)', start_time_lower)
         if time_match:
-            time_str = time_match.group(1)
-            hour = self._parse_time_string(time_str)
-            logger.info(f"[Google Calendar] Extracted time: {hour}:00")
+            hour = int(time_match.group(1))
+            minute = int(time_match.group(2)) if time_match.group(2) else 0
+            ampm = time_match.group(3)
+            if ampm == 'pm' and hour != 12:
+                hour += 12
+            elif ampm == 'am' and hour == 12:
+                hour = 0
+            logger.info(f"[Google Calendar] Extracted time: {hour}:{minute:02d}")
+        else:
+            # Try "at X" without am/pm (assume 24h or contextual)
+            at_match = re.search(r'at\s+(\d{1,2})(?::(\d{2}))?(?!\d)', start_time_lower)
+            if at_match:
+                hour = int(at_match.group(1))
+                minute = int(at_match.group(2)) if at_match.group(2) else 0
+                # If hour <= 12 and no am/pm, assume PM for business hours
+                if hour <= 12 and hour >= 1:
+                    if hour < 8:  # 1-7 likely means PM
+                        hour += 12
+                logger.info(f"[Google Calendar] Extracted time (at X): {hour}:{minute:02d}")
         
         # Handle relative dates
         if "tomorrow" in start_time_lower:
