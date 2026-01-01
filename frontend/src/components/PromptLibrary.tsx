@@ -185,12 +185,12 @@ const CATEGORIES: Category[] = [
         id: 'sf-update',
         name: 'Update - Opportunities',
         icon: '✏️',
-        info: 'Updates opportunity stage. Valid stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Proposal, Negotiation, Closed Won, Closed Lost',
+        info: 'Valid stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Proposal/Price Quote, Negotiation/Review, Closed Won, Closed Lost',
         prompts: [
           { 
             id: 'sf-7', 
-            text: 'Use Salesforce to update the opportunity stage for Portfolio Rebalancing - Thompson to Negotiation.', 
-            description: 'Update Thompson to Negotiation', 
+            text: 'Use Salesforce to update the opportunity stage for Portfolio Rebalancing - Thompson to Negotiation/Review.', 
+            description: 'Update Thompson to Negotiation/Review', 
             action: 'UPDATE' 
           },
           { 
