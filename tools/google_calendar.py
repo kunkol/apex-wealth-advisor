@@ -337,20 +337,55 @@ class GoogleCalendarTools:
         except:
             return 14  # Default 2pm
     
-    def _parse_date_time(self, start_time: str) -> datetime:
-        """Parse natural language date/time into datetime object"""
+    def _parse_timezone(self, start_time: str) -> str:
+        """Extract timezone from string, return timezone name"""
+        start_time_lower = start_time.lower()
+        
+        # Map common timezone mentions to timezone names
+        tz_map = {
+            'ist': 'Asia/Kolkata',
+            'india': 'Asia/Kolkata',
+            'indian': 'Asia/Kolkata',
+            'pst': 'America/Los_Angeles',
+            'pacific': 'America/Los_Angeles',
+            'pt': 'America/Los_Angeles',
+            'est': 'America/New_York',
+            'eastern': 'America/New_York',
+            'et': 'America/New_York',
+            'cst': 'America/Chicago',
+            'central': 'America/Chicago',
+            'ct': 'America/Chicago',
+            'mst': 'America/Denver',
+            'mountain': 'America/Denver',
+            'mt': 'America/Denver',
+            'utc': 'UTC',
+            'gmt': 'UTC',
+        }
+        
+        for tz_key, tz_value in tz_map.items():
+            if tz_key in start_time_lower:
+                logger.info(f"[Google Calendar] Detected timezone: {tz_key} -> {tz_value}")
+                return tz_value
+        
+        return DEFAULT_TIMEZONE
+    
+    def _parse_date_time(self, start_time: str) -> tuple:
+        """Parse natural language date/time into datetime object and timezone"""
         import re
         
         start_time_lower = start_time.lower()
         now = datetime.now()
         
-        logger.info(f"[Google Calendar] Parsing date/time: '{start_time}'")
+        # Extract timezone first
+        user_timezone = self._parse_timezone(start_time)
+        
+        logger.info(f"[Google Calendar] Parsing date/time: '{start_time}' (timezone: {user_timezone})")
         
         # Try ISO format first
         try:
             dt = datetime.fromisoformat(start_time.replace("Z", ""))
             logger.info(f"[Google Calendar] Parsed as ISO format: {dt}")
-            return dt
+            return dt, user_timezone
         except:
             pass
         
@@ -387,12 +422,12 @@ class GoogleCalendarTools:
             dt = now + timedelta(days=1)
             dt = dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
             logger.info(f"[Google Calendar] Parsed 'tomorrow' as: {dt}")
-            return dt
+            return dt, user_timezone
         
         if "today" in start_time_lower:
             dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
             logger.info(f"[Google Calendar] Parsed 'today' as: {dt}")
-            return dt
+            return dt, user_timezone
         
         # Handle day names (Monday, Tuesday, etc.)
         days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -407,7 +442,7 @@ class GoogleCalendarTools:
                 dt = now + timedelta(days=days_ahead)
                 dt = dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
                 logger.info(f"[Google Calendar] Parsed '{day}' as: {dt}")
-                return dt
+                return dt, user_timezone
         
         # Handle month + day format (e.g., "January 4th", "Jan 4", "1/4")
         months = {
@@ -431,8 +466,8 @@ class GoogleCalendarTools:
                         year += 1
                     
                     dt = datetime(year, month_num, day, hour, minute, 0)
-                    logger.info(f"[Google Calendar] Parsed '{month_name} {day}' as: {dt}")
-                    return dt
+                    logger.info(f"[Google Calendar] Parsed '{month_name} {day}' as: {dt} ({user_timezone})")
+                    return dt, user_timezone
         
         # Handle numeric date format (1/4, 01/04)
         date_match = re.search(r'(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?', start_time)
@@ -444,13 +479,13 @@ class GoogleCalendarTools:
                 year += 2000
             dt = datetime(year, month, day, hour, minute, 0)
             logger.info(f"[Google Calendar] Parsed numeric date as: {dt}")
-            return dt
+            return dt, user_timezone
         
         # Default: tomorrow at the extracted/default time
         dt = now + timedelta(days=1)
         dt = dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
         logger.info(f"[Google Calendar] Could not parse, defaulting to tomorrow: {dt}")
-        return dt
+        return dt, user_timezone
 
     async def _create_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
         """Create a new calendar event"""
@@ -461,17 +496,17 @@ class GoogleCalendarTools:
         attendee_email = args.get("attendee_email")
         attendee_name = args.get("attendee_name", "")
         
-        # Parse start time with improved parser
-        start_dt = self._parse_date_time(start_time)
+        # Parse start time with improved parser - returns (datetime, timezone)
+        start_dt, event_timezone = self._parse_date_time(start_time)
         end_dt = start_dt + timedelta(minutes=duration)
         
-        logger.info(f"[Google Calendar] Creating event '{title}' at {start_dt.isoformat()}")
+        logger.info(f"[Google Calendar] Creating event '{title}' at {start_dt.isoformat()} ({event_timezone})")
         
         event_data = {
             "summary": title,
             "description": description,
-            "start": {"dateTime": start_dt.isoformat(), "timeZone": DEFAULT_TIMEZONE},
-            "end": {"dateTime": end_dt.isoformat(), "timeZone": DEFAULT_TIMEZONE},
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": event_timezone},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": event_timezone},
             "attendees": [{"email": attendee_email, "displayName": attendee_name}] if attendee_email else []
         }
         
