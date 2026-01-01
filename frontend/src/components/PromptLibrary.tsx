@@ -57,9 +57,9 @@ interface PromptLibraryProps {
 const CATEGORIES: Category[] = [
   {
     id: 'google-calendar',
-    name: 'Google Calendar',
+    name: 'Scheduling',
     icon: '📅',
-    securityFlow: 'Auth0 Token Vault',
+    securityFlow: 'Google Calendar via Token Vault',
     color: 'rose',
     subSections: [
       {
@@ -126,9 +126,9 @@ const CATEGORIES: Category[] = [
   },
   {
     id: 'salesforce',
-    name: 'Salesforce CRM',
-    icon: '☁️',
-    securityFlow: 'Auth0 Token Vault',
+    name: 'Client CRM',
+    icon: '👥',
+    securityFlow: 'Salesforce via Token Vault',
     color: 'sky',
     subSections: [
       {
@@ -192,9 +192,9 @@ const CATEGORIES: Category[] = [
   },
   {
     id: 'apex-mcp',
-    name: 'Apex MCP (Internal)',
-    icon: '🏦',
-    securityFlow: 'Okta XAA (Cross-App Access)',
+    name: 'Portfolio Management',
+    icon: '💼',
+    securityFlow: 'Internal System via Okta XAA',
     color: 'green',
     subSections: [
       {
@@ -245,9 +245,9 @@ const CATEGORIES: Category[] = [
   },
   {
     id: 'hitl',
-    name: 'HITL Transactions',
+    name: 'Transactions & Approvals',
     icon: '💸',
-    securityFlow: 'Okta XAA + Human-in-the-Loop',
+    securityFlow: 'HITL Governance via Okta XAA',
     color: 'amber',
     subSections: [
       {
@@ -329,9 +329,9 @@ const CATEGORIES: Category[] = [
   },
   {
     id: 'combined',
-    name: 'Combined Workflows',
+    name: 'Multi-System Workflows',
     icon: '🔄',
-    securityFlow: 'Multiple Security Flows',
+    securityFlow: 'Combined Security Flows',
     color: 'purple',
     subSections: [
       {
