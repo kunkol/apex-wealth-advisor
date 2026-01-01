@@ -6,10 +6,13 @@ Accesses Google Calendar API via Auth0 Token Vault
 import logging
 import os
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 
 logger = logging.getLogger(__name__)
+
+# Default timezone - can be overridden via environment variable
+DEFAULT_TIMEZONE = os.getenv("CALENDAR_TIMEZONE", "America/Los_Angeles")
 
 
 class GoogleCalendarTools:
@@ -218,21 +221,51 @@ class GoogleCalendarTools:
         # If we have a real token, call Google API
         if google_token:
             try:
-                return await self._call_google_api(
+                # Use UTC for API calls, let Google handle timezone conversion
+                now_utc = datetime.now(timezone.utc)
+                time_max_utc = now_utc + timedelta(days=days_ahead)
+                
+                logger.info(f"[Google Calendar] Calling events.list API (next {days_ahead} days)")
+                logger.info(f"[Google Calendar] timeMin: {now_utc.isoformat()}, timeMax: {time_max_utc.isoformat()}")
+                
+                result = await self._call_google_api(
                     "GET",
                     f"/calendars/primary/events",
                     google_token,
                     params={
-                        "maxResults": 20,
+                        "maxResults": 50,
                         "orderBy": "startTime",
                         "singleEvents": True,
-                        "timeMin": datetime.now().isoformat() + "Z"
+                        "timeMin": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "timeMax": time_max_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "timeZone": DEFAULT_TIMEZONE
                     }
                 )
+                
+                events = result.get("items", [])
+                logger.info(f"[Google Calendar] SUCCESS: Retrieved {len(events)} events from real Google Calendar")
+                
+                # Filter by search query if provided
+                if search_query:
+                    events = [
+                        e for e in events 
+                        if search_query in e.get("summary", "").lower() or
+                           any(search_query in a.get("displayName", "").lower() for a in e.get("attendees", []))
+                    ]
+                    logger.info(f"[Google Calendar] Filtered to {len(events)} events matching '{search_query}'")
+                
+                return {
+                    "events": events,
+                    "count": len(events),
+                    "days_ahead": days_ahead,
+                    "timezone": DEFAULT_TIMEZONE,
+                    "source": "Google Calendar (via Auth0 Token Vault)"
+                }
             except Exception as e:
-                logger.warning(f"Google API call failed, using mock data: {e}")
+                logger.warning(f"[Google Calendar] API call failed, using mock data: {e}")
         
         # Use mock data
+        logger.info("[Google Calendar] Using MOCK data (no token or API failed)")
         events = self.mock_events
         
         # Filter by search query
@@ -247,7 +280,7 @@ class GoogleCalendarTools:
             "events": events,
             "count": len(events),
             "days_ahead": days_ahead,
-            "source": "Google Calendar (via Auth0 Token Vault)" if google_token else "Demo Data"
+            "source": "Demo Data (Mock)"
         }
     
     async def _get_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
@@ -256,13 +289,16 @@ class GoogleCalendarTools:
         
         if google_token:
             try:
-                return await self._call_google_api(
+                logger.info(f"[Google Calendar] Getting event: {event_id}")
+                result = await self._call_google_api(
                     "GET",
                     f"/calendars/primary/events/{event_id}",
                     google_token
                 )
+                logger.info(f"[Google Calendar] SUCCESS: Retrieved event '{result.get('summary', 'Unknown')}'")
+                return {"event": result, "source": "Google Calendar (via Auth0 Token Vault)"}
             except Exception as e:
-                logger.warning(f"Google API call failed, using mock data: {e}")
+                logger.warning(f"[Google Calendar] API call failed, using mock data: {e}")
         
         # Mock lookup
         for event in self.mock_events:
@@ -299,21 +335,29 @@ class GoogleCalendarTools:
         event_data = {
             "summary": title,
             "description": description,
-            "start": {"dateTime": start_dt.isoformat(), "timeZone": "America/New_York"},
-            "end": {"dateTime": end_dt.isoformat(), "timeZone": "America/New_York"},
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": DEFAULT_TIMEZONE},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": DEFAULT_TIMEZONE},
             "attendees": [{"email": attendee_email, "displayName": attendee_name}] if attendee_email else []
         }
         
         if google_token:
             try:
-                return await self._call_google_api(
+                logger.info(f"[Google Calendar] Creating event: {title}")
+                result = await self._call_google_api(
                     "POST",
                     f"/calendars/primary/events",
                     google_token,
                     json_data=event_data
                 )
+                logger.info(f"[Google Calendar] SUCCESS: Created event '{title}' with ID {result.get('id')}")
+                return {
+                    "status": "created",
+                    "event": result,
+                    "message": f"Meeting '{title}' scheduled for {start_dt.strftime('%B %d at %I:%M %p')}",
+                    "source": "Google Calendar (via Auth0 Token Vault)"
+                }
             except Exception as e:
-                logger.warning(f"Google API call failed, using mock: {e}")
+                logger.warning(f"[Google Calendar] API call failed, using mock: {e}")
         
         # Mock creation
         new_event = {
@@ -331,7 +375,7 @@ class GoogleCalendarTools:
             "status": "created",
             "event": new_event,
             "message": f"Meeting '{title}' scheduled for {start_dt.strftime('%B %d at %I:%M %p')}",
-            "source": "Google Calendar (via Auth0 Token Vault)" if google_token else "Demo Data"
+            "source": "Demo Data (Mock)"
         }
     
     async def _check_availability(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
@@ -389,14 +433,16 @@ class GoogleCalendarTools:
         
         if google_token:
             try:
+                logger.info(f"[Google Calendar] Cancelling event: {event_id}")
                 await self._call_google_api(
                     "DELETE",
                     f"/calendars/primary/events/{event_id}",
                     google_token
                 )
-                return {"status": "cancelled", "event_id": event_id}
+                logger.info(f"[Google Calendar] SUCCESS: Cancelled event {event_id}")
+                return {"status": "cancelled", "event_id": event_id, "source": "Google Calendar (via Auth0 Token Vault)"}
             except Exception as e:
-                logger.warning(f"Google API call failed: {e}")
+                logger.warning(f"[Google Calendar] API call failed: {e}")
         
         # Mock cancellation
         for i, event in enumerate(self.mock_events):
@@ -425,6 +471,8 @@ class GoogleCalendarTools:
             "Content-Type": "application/json"
         }
         
+        logger.info(f"[Google API] {method} {endpoint}")
+        
         if method == "GET":
             resp = requests.get(url, headers=headers, params=params, timeout=30)
         elif method == "POST":
@@ -435,7 +483,8 @@ class GoogleCalendarTools:
             raise ValueError(f"Unsupported method: {method}")
         
         if resp.status_code >= 400:
-            logger.error(f"Google API error: {resp.status_code} - {resp.text}")
+            logger.error(f"[Google API] Error: {resp.status_code} - {resp.text}")
             raise Exception(f"Google API error: {resp.status_code}")
         
+        logger.info(f"[Google API] Success: {resp.status_code}")
         return resp.json() if resp.text else {"status": "success"}
