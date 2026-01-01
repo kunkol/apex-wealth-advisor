@@ -964,16 +964,28 @@ export default function SecurityFlowTab({
                       <span className="text-green-400 text-xs ml-auto">✓ Executed</span>
                     </div>
                     
-                    {/* MCP Server */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs text-slate-500 w-16">Server</span>
-                      <div className="flex items-center gap-2 px-2 py-1 bg-slate-800 rounded">
-                        <span className="text-amber-400">🏢</span>
-                        <span className="text-xs text-white font-medium">
-                          {toolsCalled.some(t => CALENDAR_TOOLS.includes(t)) ? 'Google Calendar API' :
-                           toolsCalled.some(t => SALESFORCE_TOOLS.includes(t)) ? 'Salesforce CRM' :
-                           'Apex Wealth MCP'}
-                        </span>
+                    {/* MCP Servers - Show ALL that were used */}
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="text-xs text-slate-500 w-16 pt-1">Servers</span>
+                      <div className="flex flex-wrap gap-1">
+                        {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded border border-emerald-500/30">
+                            <span className="text-emerald-400">🏢</span>
+                            <span className="text-xs text-emerald-300 font-medium">Apex Wealth MCP</span>
+                          </div>
+                        )}
+                        {toolsCalled.some(t => SALESFORCE_TOOLS.includes(t)) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-sky-900/30 rounded border border-sky-500/30">
+                            <span className="text-sky-400">☁️</span>
+                            <span className="text-xs text-sky-300 font-medium">Salesforce CRM</span>
+                          </div>
+                        )}
+                        {toolsCalled.some(t => CALENDAR_TOOLS.includes(t)) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-rose-900/30 rounded border border-rose-500/30">
+                            <span className="text-rose-400">📅</span>
+                            <span className="text-xs text-rose-300 font-medium">Google Calendar</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     
