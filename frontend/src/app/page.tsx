@@ -293,7 +293,7 @@ export default function ApexWealthAdvisor() {
 
   // Main app
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
       {/* Header with tabs */}
       <header className="border-b border-slate-800 bg-slate-900">
         <div className="px-4 py-3">
@@ -394,14 +394,14 @@ export default function ApexWealthAdvisor() {
       />
 
       {/* Main Content - Tab Panels */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden h-full">
         {/* TAB 1: Agent (2-column layout: Chat + Token Cards) */}
         {activeMainTab === 'agent' && (
           <div className="h-full p-2">
             <div className="h-full grid grid-cols-12 gap-2">
               
               {/* LEFT: Chat - 8 cols */}
-              <div className="col-span-8 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+              <div className="col-span-8 flex flex-col bg-slate-950 rounded-xl border border-slate-800 overflow-hidden h-full">
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="space-y-4">
