@@ -112,14 +112,13 @@ const CATEGORIES: Category[] = [
         id: 'gc-cancel',
         name: 'Cancel Meetings',
         icon: '❌',
-        info: 'Requires event_id from the create response. Replace [EVENT_ID] with actual ID.',
+        info: 'Searches by meeting title and date to find and cancel the event',
         prompts: [
           { 
             id: 'gc-6', 
-            text: 'Use the cancel_calendar_event tool with event_id "[EVENT_ID]" to cancel my meeting with Marcus Thompson.', 
-            description: 'Cancel meeting (needs event_id)', 
-            action: 'CANCEL',
-            note: 'Replace [EVENT_ID] with ID from create response'
+            text: 'Use Google Calendar to cancel my meeting with Marcus Thompson on January 15th, 2026.', 
+            description: 'Cancel meeting by name and date', 
+            action: 'CANCEL'
           },
         ]
       },
