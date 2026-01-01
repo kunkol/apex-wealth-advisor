@@ -1,11 +1,12 @@
 /**
  * PromptLibrary.tsx
- * Updated with Salesforce prompts ENABLED (was grayed out)
- * 
- * Changes:
- * - Salesforce prompts now have ready: true
- * - Added salesforce access pattern
- * - 36 prompts now active (was 26)
+ * Complete rewrite with:
+ * - Collapsible/expandable sections
+ * - Concrete dates, times, and values
+ * - Explicit tool routing (Use Google Calendar to..., Use Salesforce to..., Use Apex MCP server to...)
+ * - HITL transaction scenarios
+ * - Combined workflows
+ * - Removed BigQuery (not implemented)
  */
 
 'use client';
@@ -20,18 +21,25 @@ interface Prompt {
   id: string;
   text: string;
   description: string;
-  securityDemo: string;
-  accessPattern: 'xaa' | 'token-vault-calendar' | 'token-vault-salesforce' | 'bigquery' | 'cross-system' | 'security';
-  ready: boolean;
+  action?: 'CREATE' | 'CANCEL' | 'READ' | 'UPDATE' | 'CLOSE';
+  expected?: string;
+}
+
+interface SubSection {
+  id: string;
+  name: string;
+  icon: string;
+  info?: string;
+  prompts: Prompt[];
 }
 
 interface Category {
   id: string;
   name: string;
-  icon: React.ReactNode;
-  accessPattern: string;
-  status: 'ready' | 'partial' | 'blocked';
-  prompts: Prompt[];
+  icon: string;
+  securityFlow: string;
+  color: string;
+  subSections: SubSection[];
 }
 
 interface PromptLibraryProps {
@@ -41,107 +49,248 @@ interface PromptLibraryProps {
 }
 
 // =============================================================================
-// Prompt Data - Salesforce NOW ENABLED
+// Prompt Data - All prompts with concrete values
 // =============================================================================
 
 const CATEGORIES: Category[] = [
   {
-    id: 'internal-mcp',
-    name: '1. Internal MCP (XAA)',
-    icon: <span className="text-green-400">🔐</span>,
-    accessPattern: 'Okta XAA → ID-JAG → MCP Token',
-    status: 'ready',
-    prompts: [
-      { id: '1.1', text: 'Show me all active clients', description: 'List clients from portfolio system', securityDemo: 'XAA token exchange', accessPattern: 'xaa', ready: true },
-      { id: '1.2', text: 'Look up Marcus Thompson', description: 'Get client by name', securityDemo: 'MCP tool call', accessPattern: 'xaa', ready: true },
-      { id: '1.3', text: 'What is Marcus Thompson\'s portfolio value?', description: 'Portfolio lookup', securityDemo: 'Scoped access', accessPattern: 'xaa', ready: true },
-      { id: '1.4', text: 'Show portfolio holdings for Elena Rodriguez', description: 'Detailed holdings', securityDemo: 'User-scoped data', accessPattern: 'xaa', ready: true },
-      { id: '1.5', text: 'Process a $5,000 payment to Marcus Thompson', description: 'Standard payment', securityDemo: 'Within threshold', accessPattern: 'xaa', ready: true },
-      { id: '1.6', text: 'Process a $15,000 payment to Marcus Thompson', description: 'Large payment', securityDemo: 'CIBA step-up auth', accessPattern: 'xaa', ready: true },
-      { id: '1.7', text: 'Update contact info for James Chen', description: 'Client update', securityDemo: 'Write operation', accessPattern: 'xaa', ready: true },
-      { id: '1.8', text: 'Who are my highest value clients?', description: 'Aggregation query', securityDemo: 'Read-only access', accessPattern: 'xaa', ready: true },
-      { id: '1.9', text: 'Show me clients with portfolios over $1M', description: 'Filtered query', securityDemo: 'Parameterized access', accessPattern: 'xaa', ready: true },
-      { id: '1.10', text: 'Get Priya Patel\'s account summary', description: 'Full account view', securityDemo: 'Multi-tool call', accessPattern: 'xaa', ready: true },
+    id: 'google-calendar',
+    name: 'Google Calendar',
+    icon: '📅',
+    securityFlow: 'Auth0 Token Vault',
+    color: 'rose',
+    subSections: [
+      {
+        id: 'gc-view',
+        name: 'View Meetings',
+        icon: '📖',
+        prompts: [
+          { id: 'gc-1', text: 'Use Google Calendar to show me all my meetings scheduled for this week. I want to plan my availability for client calls.', description: 'List weekly events', action: 'READ' },
+          { id: 'gc-2', text: 'Use Google Calendar to check what client meetings I have tomorrow. I need to prepare my talking points and review portfolios.', description: 'Daily view', action: 'READ' },
+          { id: 'gc-3', text: 'Use Google Calendar to check my availability on Wednesday and Thursday afternoon PST. I need to find time for a new client onboarding.', description: 'Check availability', action: 'READ' },
+        ]
+      },
+      {
+        id: 'gc-portfolio',
+        name: 'Portfolio Review Meeting',
+        icon: '✏️',
+        info: 'Client: Marcus Thompson | Email: marcus.thompson@email.com',
+        prompts: [
+          { id: 'gc-4', text: 'Use Google Calendar to schedule a portfolio review meeting with Marcus Thompson (marcus.thompson@email.com) for January 15th, 2026 at 2:00 PM PST. The meeting is to discuss Q1 investment strategy and rebalancing options.', description: 'Schedule portfolio review', action: 'CREATE' },
+          { id: 'gc-5', text: 'Use Google Calendar to cancel my portfolio review meeting with Marcus Thompson scheduled for January 15th, 2026. He requested to reschedule due to a conflict.', description: 'Cancel portfolio review', action: 'CANCEL' },
+        ]
+      },
+      {
+        id: 'gc-retirement',
+        name: 'Retirement Planning Session',
+        icon: '✏️',
+        info: 'Client: Elena Rodriguez | Email: elena.rodriguez@email.com',
+        prompts: [
+          { id: 'gc-6', text: 'Use Google Calendar to set up a retirement planning session with Elena Rodriguez (elena.rodriguez@email.com) for January 20th, 2026 at 10:00 AM PST. We\'ll be reviewing her 401k rollover options and tax implications.', description: 'Schedule retirement session', action: 'CREATE' },
+          { id: 'gc-7', text: 'Use Google Calendar to cancel my retirement planning session with Elena Rodriguez scheduled for January 20th, 2026. She needs to postpone until next month.', description: 'Cancel retirement session', action: 'CANCEL' },
+        ]
+      },
+      {
+        id: 'gc-onboarding',
+        name: 'New Client Onboarding',
+        icon: '✏️',
+        info: 'Client: James Chen | Email: jchen@chenindustries.com',
+        prompts: [
+          { id: 'gc-8', text: 'Use Google Calendar to schedule an onboarding call with James Chen (jchen@chenindustries.com) for January 22nd, 2026 at 3:00 PM PST. This is our initial meeting to discuss his investment goals and risk tolerance.', description: 'Schedule onboarding call', action: 'CREATE' },
+          { id: 'gc-9', text: 'Use Google Calendar to cancel my onboarding call with James Chen scheduled for January 22nd, 2026. He\'s traveling and will reach out when back.', description: 'Cancel onboarding call', action: 'CANCEL' },
+        ]
+      },
     ]
   },
   {
     id: 'salesforce',
-    name: '2. Salesforce CRM (Token Vault)',
-    icon: <span className="text-sky-400">☁️</span>,
-    accessPattern: 'Auth0 Token Vault → Salesforce API',
-    status: 'ready',  // ← CHANGED from 'blocked' to 'ready'
-    prompts: [
-      { id: '2.1', text: 'Look up Marcus Thompson in Salesforce', description: 'Search contacts', securityDemo: 'Token Vault exchange', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.2', text: 'What opportunities do we have with Thompson?', description: 'Contact opportunities', securityDemo: 'Federated token', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.3', text: 'Show me Elena Rodriguez\'s Salesforce record', description: 'Contact lookup', securityDemo: 'User-delegated access', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.4', text: 'Show me the current sales pipeline', description: 'Pipeline summary', securityDemo: 'Aggregate query', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.5', text: 'Which clients have opportunities over $500K?', description: 'High-value filter', securityDemo: 'SOQL query', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.6', text: 'Create a follow-up task for Thompson next week', description: 'Create task', securityDemo: 'Write via Token Vault', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.7', text: 'Add a note to Chen\'s account about Q2 strategy', description: 'Create note', securityDemo: 'Write operation', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.8', text: 'What\'s the total pipeline value?', description: 'Pipeline aggregation', securityDemo: 'Read aggregation', accessPattern: 'token-vault-salesforce', ready: false },
-      { id: '2.9', text: 'Show contacts at Grand Hotels', description: 'Account contacts', securityDemo: 'Related records', accessPattern: 'token-vault-salesforce', ready: true },
-      { id: '2.10', text: 'Update Rodriguez opportunity to Negotiation stage', description: 'Update opportunity', securityDemo: 'Write via Token Vault', accessPattern: 'token-vault-salesforce', ready: true },
+    name: 'Salesforce CRM',
+    icon: '☁️',
+    securityFlow: 'Auth0 Token Vault',
+    color: 'sky',
+    subSections: [
+      {
+        id: 'sf-contacts',
+        name: 'Read - Contacts & Accounts',
+        icon: '📖',
+        prompts: [
+          { id: 'sf-1', text: 'Use Salesforce to look up the contact details for Marcus Thompson. I need his phone number and email for a follow-up call about his portfolio.', description: 'Contact lookup', action: 'READ' },
+          { id: 'sf-2', text: 'Use Salesforce to find enterprise accounts in the Technology sector with annual revenue over $10M. I\'m preparing for our wealth management prospecting campaign.', description: 'Account search', action: 'READ' },
+          { id: 'sf-3', text: 'Use Salesforce to show me contacts I added this month. I want to ensure all new leads have been followed up.', description: 'Recent contacts', action: 'READ' },
+        ]
+      },
+      {
+        id: 'sf-pipeline',
+        name: 'Read - Opportunities & Pipeline',
+        icon: '📖',
+        prompts: [
+          { id: 'sf-4', text: 'Use Salesforce to show me all my open opportunities with expected close dates this quarter. I want to review my Q1 pipeline status for the team meeting.', description: 'Pipeline view', action: 'READ' },
+          { id: 'sf-5', text: 'Use Salesforce to check the current status and next steps for the Acme Corp deal. I need to update the leadership team in our standup.', description: 'Opportunity status', action: 'READ' },
+        ]
+      },
+      {
+        id: 'sf-create',
+        name: 'Create - Contacts & Opportunities',
+        icon: '➕',
+        prompts: [
+          { id: 'sf-6', text: 'Use Salesforce to create a new contact for James Chen at Chen Industries. His email is jchen@chenindustries.com and phone is 415-555-0123. He\'s a potential high-net-worth client referral.', description: 'Create contact', action: 'CREATE' },
+          { id: 'sf-7', text: 'Use Salesforce to create a new opportunity for Marcus Thompson called "Trust Fund Setup" with an expected value of $500,000 and close date of March 31st, 2026.', description: 'Create opportunity', action: 'CREATE' },
+        ]
+      },
+      {
+        id: 'sf-update',
+        name: 'Update - Records',
+        icon: '✏️',
+        prompts: [
+          { id: 'sf-8', text: 'Use Salesforce to update the Acme Corp opportunity stage to "Negotiation" and add a note that we received verbal approval yesterday. Expected close is now February 15th, 2026.', description: 'Update opportunity', action: 'UPDATE' },
+          { id: 'sf-9', text: 'Use Salesforce to update Marcus Thompson\'s contact record with his new phone number 415-555-9999 and add a note that he prefers afternoon calls.', description: 'Update contact', action: 'UPDATE' },
+        ]
+      },
+      {
+        id: 'sf-close',
+        name: 'Close - Opportunities',
+        icon: '❌',
+        prompts: [
+          { id: 'sf-10', text: 'Use Salesforce to close the opportunity for Beta Corp as "Closed Lost". They decided to go with a competitor due to pricing.', description: 'Close lost', action: 'CLOSE' },
+          { id: 'sf-11', text: 'Use Salesforce to mark the Acme Corp opportunity as "Closed Won" with final value of $475,000. Contract was signed today.', description: 'Close won', action: 'CLOSE' },
+        ]
+      },
     ]
   },
   {
-    id: 'google-calendar',
-    name: '3. Google Calendar (Token Vault)',
-    icon: <span className="text-rose-400">📅</span>,
-    accessPattern: 'Auth0 Token Vault → Google Calendar API',
-    status: 'ready',
-    prompts: [
-      { id: '3.1', text: 'What meetings do I have this week?', description: 'List upcoming events', securityDemo: 'Token Vault exchange', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.2', text: 'Show my calendar for tomorrow', description: 'Day view', securityDemo: 'Federated token', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.3', text: 'Do I have any meetings with Marcus Thompson?', description: 'Search by attendee', securityDemo: 'User-delegated access', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.4', text: 'Am I free at 2pm tomorrow?', description: 'Check availability', securityDemo: 'Free/busy lookup', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.5', text: 'Schedule a portfolio review with Marcus Thompson for next Tuesday at 10am', description: 'Create event', securityDemo: 'Write via Token Vault', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.6', text: 'When is my next meeting with Elena?', description: 'Search future events', securityDemo: 'Query with filter', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.7', text: 'Block off Friday afternoon for planning', description: 'Create block', securityDemo: 'Write operation', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.8', text: 'Show me all client meetings this month', description: 'Monthly view', securityDemo: 'Date range query', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.9', text: 'Cancel my meeting on Friday', description: 'Delete event', securityDemo: 'Delete via Token Vault', accessPattern: 'token-vault-calendar', ready: true },
-      { id: '3.10', text: 'Find a 30-minute slot to meet with James Chen this week', description: 'Find availability', securityDemo: 'Complex availability', accessPattern: 'token-vault-calendar', ready: true },
+    id: 'apex-mcp',
+    name: 'Apex MCP (Internal)',
+    icon: '🏦',
+    securityFlow: 'Okta XAA (Cross-App Access)',
+    color: 'green',
+    subSections: [
+      {
+        id: 'mcp-read',
+        name: 'Read - Client & Portfolio Data',
+        icon: '📖',
+        prompts: [
+          { id: 'mcp-1', text: 'Use the Apex MCP server to show me my complete client roster with their AUM, risk profile, and last contact date. I need to prioritize outreach this week.', description: 'Client roster', action: 'READ' },
+          { id: 'mcp-2', text: 'Use the Apex MCP server to pull up the full portfolio breakdown for Marcus Thompson including asset allocation, YTD performance, and benchmark comparison.', description: 'Portfolio details', action: 'READ' },
+          { id: 'mcp-3', text: 'Use the Apex MCP server to show all transactions for Elena Rodriguez in the last 90 days. I\'m preparing for her quarterly review meeting.', description: 'Transaction history', action: 'READ' },
+          { id: 'mcp-4', text: 'Use the Apex MCP server to get our total assets under management and average client AUM. I need these metrics for the monthly leadership report.', description: 'AUM metrics', action: 'READ' },
+          { id: 'mcp-5', text: 'Use the Apex MCP server to identify high-net-worth clients with AUM over $1M who haven\'t had a portfolio review in the last 6 months.', description: 'Client filter', action: 'READ' },
+        ]
+      },
+      {
+        id: 'mcp-create',
+        name: 'Create - Clients',
+        icon: '➕',
+        prompts: [
+          { id: 'mcp-6', text: 'Use the Apex MCP server to onboard a new client James Chen with initial AUM of $750,000, moderate risk tolerance, and growth-focused investment objective.', description: 'Onboard client', action: 'CREATE' },
+        ]
+      },
+      {
+        id: 'mcp-update',
+        name: 'Update - Client Profiles',
+        icon: '✏️',
+        prompts: [
+          { id: 'mcp-7', text: 'Use the Apex MCP server to update Elena Rodriguez\'s risk profile from "Moderate" to "Conservative". She\'s approaching retirement and wants to reduce volatility.', description: 'Update risk profile', action: 'UPDATE' },
+          { id: 'mcp-8', text: 'Use the Apex MCP server to rebalance Marcus Thompson\'s portfolio to 60% equities, 30% bonds, and 10% alternatives per his updated investment policy statement.', description: 'Rebalance portfolio', action: 'UPDATE' },
+        ]
+      },
+      {
+        id: 'mcp-close',
+        name: 'Close - Accounts',
+        icon: '❌',
+        prompts: [
+          { id: 'mcp-9', text: 'Use the Apex MCP server to close the account for client David Wilson. He has transferred all assets to another advisor. Archive all records per compliance requirements.', description: 'Close account', action: 'CLOSE' },
+        ]
+      },
     ]
   },
   {
-    id: 'bigquery',
-    name: '4. BigQuery Analytics (MCP OAuth)',
-    icon: <span className="text-yellow-400">📊</span>,
-    accessPattern: 'Google MCP OAuth → BigQuery',
-    status: 'blocked',
-    prompts: [
-      { id: '4.1', text: 'Show portfolio performance YTD', description: 'Performance analytics', securityDemo: 'BigQuery via MCP', accessPattern: 'bigquery', ready: false },
-      { id: '4.2', text: 'Compare returns across asset classes', description: 'Asset comparison', securityDemo: 'Analytics query', accessPattern: 'bigquery', ready: false },
-      { id: '4.3', text: 'Which sectors are underperforming?', description: 'Sector analysis', securityDemo: 'Aggregated data', accessPattern: 'bigquery', ready: false },
-      { id: '4.4', text: 'Show me the top 10 holdings by value', description: 'Top holdings', securityDemo: 'Ranked query', accessPattern: 'bigquery', ready: false },
-      { id: '4.5', text: 'Calculate risk-adjusted returns', description: 'Risk metrics', securityDemo: 'Complex analytics', accessPattern: 'bigquery', ready: false },
+    id: 'hitl',
+    name: 'HITL Transactions',
+    icon: '💸',
+    securityFlow: 'Okta XAA + Human-in-the-Loop',
+    color: 'amber',
+    subSections: [
+      {
+        id: 'hitl-auto',
+        name: 'Auto-Approved (Under $10,000)',
+        icon: '✅',
+        info: 'Threshold: < $10,000 | Approval: None | Status: Immediate',
+        prompts: [
+          { id: 'hitl-1', text: 'Use the Apex MCP server to process a $5,000 transfer from Marcus Thompson\'s brokerage account (****4521) to his checking account (****7890). He needs funds for a home repair.', description: 'Small transfer - auto-approved', action: 'CREATE', expected: 'Transaction completes immediately. No approval required.' },
+        ]
+      },
+      {
+        id: 'hitl-manager',
+        name: 'Manager Approval ($10K - $50K)',
+        icon: '⚠️',
+        info: 'Threshold: $10,000 - $50,000 | Approver: Sarah Johnson (Manager)',
+        prompts: [
+          { id: 'hitl-2', text: 'Use the Apex MCP server to process a $25,000 transfer from Elena Rodriguez\'s IRA (****3344) to her savings account (****5566) for her daughter\'s tuition payment.', description: 'Medium transfer - manager approval', action: 'CREATE', expected: 'Transaction pending. Routed to manager Sarah Johnson for approval.' },
+        ]
+      },
+      {
+        id: 'hitl-vp',
+        name: 'VP Approval ($50K - $250K)',
+        icon: '⚠️',
+        info: 'Threshold: $50,000 - $250,000 | Approver: Michael Roberts (VP Operations)',
+        prompts: [
+          { id: 'hitl-3', text: 'Use the Apex MCP server to process a $150,000 transfer from James Chen\'s trust account (****8899) to his business operating account (****2233) for a real estate investment.', description: 'Large transfer - VP approval', action: 'CREATE', expected: 'Transaction pending. Routed to VP Michael Roberts. Estimated review: 4-8 hours.' },
+        ]
+      },
+      {
+        id: 'hitl-exec',
+        name: 'Executive Approval (Over $250K)',
+        icon: '🛑',
+        info: 'Threshold: > $250,000 | Approvers: CFO + Compliance Team',
+        prompts: [
+          { id: 'hitl-4', text: 'Use the Apex MCP server to process a $500,000 transfer from Marcus Thompson\'s investment account (****1122) to an external brokerage at Fidelity (****9900) for portfolio consolidation.', description: 'Very large transfer - executive approval', action: 'CREATE', expected: 'Multi-level approval chain: Manager → VP → CFO → Compliance. ETA: 1-2 business days.' },
+        ]
+      },
+      {
+        id: 'hitl-compliance',
+        name: 'Compliance Flag (International)',
+        icon: '🚨',
+        info: 'Trigger: International wire, High-risk jurisdiction | Approver: BSA Team',
+        prompts: [
+          { id: 'hitl-5', text: 'Use the Apex MCP server to process a $75,000 wire transfer from Elena Rodriguez\'s account (****3344) to an international account in the Cayman Islands (IBAN: KY12345678).', description: 'International wire - compliance hold', action: 'CREATE', expected: 'Transaction held. Compliance flags: international destination, high-risk jurisdiction. Requires client verification and AML screening.' },
+        ]
+      },
     ]
   },
   {
-    id: 'cross-system',
-    name: '5. Cross-System Workflows',
-    icon: <span className="text-purple-400">🔄</span>,
-    accessPattern: 'Multiple backends orchestrated',
-    status: 'partial',
-    prompts: [
-      { id: '5.1', text: 'Prepare for my meeting with Marcus Thompson', description: 'Portfolio + Calendar + Salesforce', securityDemo: 'Multi-system', accessPattern: 'cross-system', ready: true },
-      { id: '5.2', text: 'Which clients need attention this quarter?', description: 'Performance + Calendar gaps', securityDemo: 'Cross-reference', accessPattern: 'cross-system', ready: false },
-      { id: '5.3', text: 'Send Marcus his Q4 summary and schedule a review', description: 'Report + Calendar', securityDemo: 'Multi-write', accessPattern: 'cross-system', ready: false },
-      { id: '5.4', text: 'What should I prioritize today?', description: 'Calendar + Opportunities + Tasks', securityDemo: 'Aggregated view', accessPattern: 'cross-system', ready: true },
-    ]
-  },
-  {
-    id: 'security',
-    name: '6. Security Scenarios',
-    icon: <span className="text-red-400">🛡️</span>,
-    accessPattern: 'Demonstrate security controls',
-    status: 'ready',
-    prompts: [
-      { id: '6.1', text: 'Process a $15,000 payment to Marcus Thompson', description: 'Triggers CIBA step-up', securityDemo: 'CIBA approval flow', accessPattern: 'security', ready: true },
-      { id: '6.2', text: 'Show Robert Williams\' account', description: 'Compliance-restricted client', securityDemo: 'FGA denial', accessPattern: 'security', ready: true },
-      { id: '6.3', text: 'Transfer $50,000 to Offshore Holdings LLC', description: 'Risk policy block', securityDemo: 'Policy enforcement', accessPattern: 'security', ready: true },
-      { id: '6.4', text: 'Access another advisor\'s client', description: 'Cross-tenant attempt', securityDemo: 'Tenant isolation', accessPattern: 'security', ready: true },
-      { id: '6.5', text: 'Show me all client SSNs', description: 'Sensitive data request', securityDemo: 'Data classification', accessPattern: 'security', ready: true },
-      { id: '6.6', text: 'Delete Marcus Thompson\'s account', description: 'Destructive action', securityDemo: 'Write protection', accessPattern: 'security', ready: true },
+    id: 'combined',
+    name: 'Combined Workflows',
+    icon: '🔄',
+    securityFlow: 'Multiple Security Flows',
+    color: 'purple',
+    subSections: [
+      {
+        id: 'comb-review',
+        name: 'Client Review Prep',
+        icon: '📋',
+        info: 'Flow: Okta XAA → Apex MCP, then Auth0 Token Vault → Google Calendar',
+        prompts: [
+          { id: 'comb-1', text: 'First, use the Apex MCP server to get Marcus Thompson\'s current portfolio value, YTD performance, and recent transactions. Then, use Google Calendar to schedule a Q1 review meeting with him (marcus.thompson@email.com) for January 25th, 2026 at 2:00 PM PST to discuss rebalancing his equity allocation.', description: 'Portfolio + Calendar', action: 'CREATE' },
+        ]
+      },
+      {
+        id: 'comb-onboard',
+        name: 'New Client Onboarding',
+        icon: '👤',
+        info: 'Flow: Auth0 Token Vault → Salesforce, then Okta XAA → Apex MCP, then Auth0 Token Vault → Calendar',
+        prompts: [
+          { id: 'comb-2', text: 'Use Salesforce to create a new contact for James Chen (jchen@chenindustries.com, 415-555-0123). Then use the Apex MCP server to set up his client profile with $750,000 initial AUM and moderate risk tolerance. Finally, use Google Calendar to schedule an onboarding call with him for January 28th, 2026 at 11:00 AM PST.', description: 'Salesforce + MCP + Calendar', action: 'CREATE' },
+        ]
+      },
+      {
+        id: 'comb-followup',
+        name: 'Meeting Follow-up',
+        icon: '✅',
+        info: 'Flow: Okta XAA → Apex MCP, then Auth0 Token Vault → Salesforce, then Auth0 Token Vault → Calendar',
+        prompts: [
+          { id: 'comb-3', text: 'I just finished my meeting with Elena Rodriguez. Use the Apex MCP server to update her risk profile to Conservative. Then use Salesforce to log a completed activity note summarizing our retirement timeline discussion. Finally, use Google Calendar to schedule a follow-up with her (elena.rodriguez@email.com) for February 5th, 2026 at 10:00 AM PST.', description: 'MCP + Salesforce + Calendar', action: 'UPDATE' },
+        ]
+      },
     ]
   },
 ];
@@ -150,28 +299,36 @@ const CATEGORIES: Category[] = [
 // Helper Functions
 // =============================================================================
 
-const getFlowStepIcon = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return (
-        <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-          <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-      );
-    case 'in_progress':
-      return (
-        <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-          <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-        </div>
-      );
-    default:
-      return (
-        <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center">
-          <div className="w-2 h-2 rounded-full bg-gray-500" />
-        </div>
-      );
+const getActionColor = (action?: string) => {
+  switch (action) {
+    case 'CREATE': return 'bg-green-500/20 text-green-400 border-green-500/30';
+    case 'CANCEL': 
+    case 'CLOSE': return 'bg-red-500/20 text-red-400 border-red-500/30';
+    case 'UPDATE': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+    case 'READ': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+  }
+};
+
+const getCategoryColor = (color: string) => {
+  switch (color) {
+    case 'rose': return 'border-rose-500/30 bg-rose-500/10';
+    case 'sky': return 'border-sky-500/30 bg-sky-500/10';
+    case 'green': return 'border-green-500/30 bg-green-500/10';
+    case 'amber': return 'border-amber-500/30 bg-amber-500/10';
+    case 'purple': return 'border-purple-500/30 bg-purple-500/10';
+    default: return 'border-slate-500/30 bg-slate-500/10';
+  }
+};
+
+const getCategoryTextColor = (color: string) => {
+  switch (color) {
+    case 'rose': return 'text-rose-400';
+    case 'sky': return 'text-sky-400';
+    case 'green': return 'text-green-400';
+    case 'amber': return 'text-amber-400';
+    case 'purple': return 'text-purple-400';
+    default: return 'text-slate-400';
   }
 };
 
@@ -184,23 +341,47 @@ export default function PromptLibrary({
   isOpen,
   onClose,
 }: PromptLibraryProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>('internal-mcp');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['google-calendar']));
+  const [expandedSubSections, setExpandedSubSections] = useState<Set<string>>(new Set());
 
   if (!isOpen) return null;
 
-  const selectedCategoryData = CATEGORIES.find(c => c.id === selectedCategory);
-  const readyCount = CATEGORIES.reduce((sum, cat) => sum + cat.prompts.filter(p => p.ready).length, 0);
-  const totalCount = CATEGORIES.reduce((sum, cat) => sum + cat.prompts.length, 0);
+  const totalPrompts = CATEGORIES.reduce((sum, cat) => 
+    sum + cat.subSections.reduce((subSum, sub) => subSum + sub.prompts.length, 0), 0
+  );
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSubSection = (subSectionId: string) => {
+    setExpandedSubSections(prev => {
+      const next = new Set(prev);
+      if (next.has(subSectionId)) {
+        next.delete(subSectionId);
+      } else {
+        next.add(subSectionId);
+      }
+      return next;
+    });
+  };
 
   const handlePromptClick = (prompt: Prompt) => {
-    if (!prompt.ready) return;
     onSelectPrompt(prompt.text);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden shadow-2xl border border-slate-800">
+      <div className="bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-2xl border border-slate-800">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
           <div>
@@ -208,7 +389,7 @@ export default function PromptLibrary({
               📚 Prompt Library
             </h2>
             <p className="text-sm text-slate-400 mt-1">
-              {readyCount} of {totalCount} prompts ready • Select a prompt to test the demo
+              {totalPrompts} demo-ready prompts • Click to use
             </p>
           </div>
           <button
@@ -222,117 +403,138 @@ export default function PromptLibrary({
         </div>
 
         {/* Content */}
-        <div className="flex h-[calc(85vh-80px)]">
-          {/* Category Sidebar */}
-          <div className="w-72 border-r border-slate-800 bg-slate-950/50 overflow-y-auto">
-            <div className="p-3 space-y-1">
-              {CATEGORIES.map((category) => {
-                const readyPrompts = category.prompts.filter(p => p.ready).length;
-                const isSelected = selectedCategory === category.id;
-                const isBlocked = category.status === 'blocked';
-                
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`w-full text-left px-3 py-3 rounded-lg transition-all ${
-                      isSelected 
-                        ? 'bg-slate-800 border border-slate-700' 
-                        : 'hover:bg-slate-800/50'
-                    } ${isBlocked ? 'opacity-50' : ''}`}
+        <div className="overflow-y-auto max-h-[calc(85vh-80px)] p-4 space-y-3">
+          {CATEGORIES.map((category) => {
+            const isExpanded = expandedCategories.has(category.id);
+            const promptCount = category.subSections.reduce((sum, sub) => sum + sub.prompts.length, 0);
+            
+            return (
+              <div key={category.id} className={`rounded-xl border ${getCategoryColor(category.color)}`}>
+                {/* Category Header */}
+                <button
+                  onClick={() => toggleCategory(category.id)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors rounded-xl"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{category.icon}</span>
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">{category.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                          {promptCount} prompts
+                        </span>
+                      </div>
+                      <span className={`text-xs ${getCategoryTextColor(category.color)}`}>
+                        {category.securityFlow}
+                      </span>
+                    </div>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{category.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium truncate ${isBlocked ? 'text-slate-500' : 'text-white'}`}>
-                            {category.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-xs ${readyPrompts > 0 ? 'text-green-400' : 'text-slate-500'}`}>
-                            {readyPrompts}/{category.prompts.length} ready
-                          </span>
-                          {category.status === 'blocked' && (
-                            <span className="text-xs text-amber-400">Coming soon</span>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Category Content */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 space-y-2">
+                    {category.subSections.map((subSection) => {
+                      const isSubExpanded = expandedSubSections.has(subSection.id);
+                      
+                      return (
+                        <div key={subSection.id} className="rounded-lg border border-slate-700/50 bg-slate-800/30">
+                          {/* SubSection Header */}
+                          <button
+                            onClick={() => toggleSubSection(subSection.id)}
+                            className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-700/30 transition-colors rounded-lg"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{subSection.icon}</span>
+                              <span className="text-sm font-medium text-slate-200">{subSection.name}</span>
+                              <span className="text-xs text-slate-500">({subSection.prompts.length})</span>
+                            </div>
+                            <svg 
+                              className={`w-4 h-4 text-slate-500 transition-transform ${isSubExpanded ? 'rotate-180' : ''}`} 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {/* SubSection Content */}
+                          {isSubExpanded && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {/* Info Banner */}
+                              {subSection.info && (
+                                <div className="text-xs text-slate-400 bg-slate-900/50 px-3 py-2 rounded-lg border border-slate-700/50">
+                                  {subSection.info}
+                                </div>
+                              )}
+                              
+                              {/* Prompts */}
+                              {subSection.prompts.map((prompt) => (
+                                <button
+                                  key={prompt.id}
+                                  onClick={() => handlePromptClick(prompt)}
+                                  className="w-full text-left p-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700/50 hover:border-slate-600 transition-all group"
+                                >
+                                  <div className="flex items-start gap-3">
+                                    {/* Action Badge */}
+                                    {prompt.action && (
+                                      <span className={`text-xs px-2 py-1 rounded border font-medium flex-shrink-0 ${getActionColor(prompt.action)}`}>
+                                        {prompt.action}
+                                      </span>
+                                    )}
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      {/* Prompt Text */}
+                                      <p className="text-sm text-slate-200 leading-relaxed">
+                                        {prompt.text}
+                                      </p>
+                                      
+                                      {/* Description */}
+                                      <p className="text-xs text-slate-500 mt-1">
+                                        {prompt.description}
+                                      </p>
+                                      
+                                      {/* Expected Result */}
+                                      {prompt.expected && (
+                                        <div className="mt-2 text-xs text-amber-400/80 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                                          Expected: {prompt.expected}
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Arrow */}
+                                    <svg className="w-4 h-4 text-slate-600 group-hover:text-slate-400 flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Prompts List */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {selectedCategoryData && (
-              <div className="space-y-2">
-                {/* Category Header */}
-                <div className="mb-4 pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2 text-slate-400 text-sm">
-                    <span>Access Pattern:</span>
-                    <code className="px-2 py-1 bg-slate-800 rounded text-xs text-purple-400">
-                      {selectedCategoryData.accessPattern}
-                    </code>
+                      );
+                    })}
                   </div>
-                </div>
-
-                {/* Prompt Items */}
-                {selectedCategoryData.prompts.map((prompt) => (
-                  <button
-                    key={prompt.id}
-                    onClick={() => handlePromptClick(prompt)}
-                    disabled={!prompt.ready}
-                    className={`w-full text-left p-4 rounded-xl border transition-all ${
-                      prompt.ready
-                        ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-slate-600 cursor-pointer'
-                        : 'bg-slate-900/30 border-slate-800/50 cursor-not-allowed opacity-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${
-                            prompt.ready ? 'bg-slate-700 text-slate-300' : 'bg-slate-800 text-slate-500'
-                          }`}>
-                            {prompt.id}
-                          </span>
-                          <span className={`text-sm font-medium ${prompt.ready ? 'text-white' : 'text-slate-500'}`}>
-                            {prompt.text}
-                          </span>
-                        </div>
-                        <p className={`text-sm mt-1 ${prompt.ready ? 'text-slate-400' : 'text-slate-600'}`}>
-                          {prompt.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            prompt.ready 
-                              ? prompt.accessPattern === 'token-vault-salesforce'
-                                ? 'bg-sky-500/20 text-sky-400'
-                                : prompt.accessPattern === 'token-vault-calendar'
-                                ? 'bg-rose-500/20 text-rose-400'
-                                : 'bg-purple-500/20 text-purple-400'
-                              : 'bg-slate-800 text-slate-500'
-                          }`}>
-                            {prompt.securityDemo}
-                          </span>
-                        </div>
-                      </div>
-                      {prompt.ready && (
-                        <div className="flex-shrink-0">
-                          <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                )}
               </div>
-            )}
-          </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-slate-800 bg-slate-950">
+          <p className="text-xs text-slate-500 text-center">
+            All dates and values are concrete examples. Modify as needed for your demo.
+          </p>
         </div>
       </div>
     </div>
