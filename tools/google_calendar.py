@@ -307,30 +307,147 @@ class GoogleCalendarTools:
         
         return {"error": "not_found", "message": f"Event '{event_id}' not found"}
     
+    def _parse_time_string(self, time_str: str) -> int:
+        """Parse time string like '11am', '2pm', '14:00' into hour (24h format)"""
+        time_str = time_str.lower().strip()
+        
+        # Handle 24h format like "14:00"
+        if ":" in time_str:
+            parts = time_str.replace("am", "").replace("pm", "").split(":")
+            hour = int(parts[0])
+            if "pm" in time_str.lower() and hour != 12:
+                hour += 12
+            return hour
+        
+        # Handle "11am", "2pm" format
+        if "pm" in time_str:
+            hour = int(time_str.replace("pm", "").strip())
+            if hour != 12:
+                hour += 12
+            return hour
+        elif "am" in time_str:
+            hour = int(time_str.replace("am", "").strip())
+            if hour == 12:
+                hour = 0
+            return hour
+        
+        # Just a number, assume it's the hour
+        try:
+            return int(time_str)
+        except:
+            return 14  # Default 2pm
+    
+    def _parse_date_time(self, start_time: str) -> datetime:
+        """Parse natural language date/time into datetime object"""
+        import re
+        
+        start_time_lower = start_time.lower()
+        now = datetime.now()
+        
+        logger.info(f"[Google Calendar] Parsing date/time: '{start_time}'")
+        
+        # Try ISO format first
+        try:
+            dt = datetime.fromisoformat(start_time.replace("Z", ""))
+            logger.info(f"[Google Calendar] Parsed as ISO format: {dt}")
+            return dt
+        except:
+            pass
+        
+        # Extract time component (e.g., "11am", "2pm", "14:00")
+        time_match = re.search(r'(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', start_time_lower)
+        hour = 14  # Default 2pm
+        minute = 0
+        
+        if time_match:
+            time_str = time_match.group(1)
+            hour = self._parse_time_string(time_str)
+            logger.info(f"[Google Calendar] Extracted time: {hour}:00")
+        
+        # Handle relative dates
+        if "tomorrow" in start_time_lower:
+            dt = now + timedelta(days=1)
+            dt = dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            logger.info(f"[Google Calendar] Parsed 'tomorrow' as: {dt}")
+            return dt
+        
+        if "today" in start_time_lower:
+            dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            logger.info(f"[Google Calendar] Parsed 'today' as: {dt}")
+            return dt
+        
+        # Handle day names (Monday, Tuesday, etc.)
+        days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        for i, day in enumerate(days):
+            if day in start_time_lower:
+                current_day = now.weekday()
+                days_ahead = i - current_day
+                if days_ahead <= 0:  # Target day already happened this week
+                    days_ahead += 7
+                if "next" in start_time_lower:
+                    days_ahead += 7
+                dt = now + timedelta(days=days_ahead)
+                dt = dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                logger.info(f"[Google Calendar] Parsed '{day}' as: {dt}")
+                return dt
+        
+        # Handle month + day format (e.g., "January 4th", "Jan 4", "1/4")
+        months = {
+            "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
+            "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
+            "august": 8, "aug": 8, "september": 9, "sep": 9, "october": 10, "oct": 10,
+            "november": 11, "nov": 11, "december": 12, "dec": 12
+        }
+        
+        for month_name, month_num in months.items():
+            if month_name in start_time_lower:
+                # Extract day number
+                day_match = re.search(r'(\d{1,2})(?:st|nd|rd|th)?', start_time_lower)
+                if day_match:
+                    day = int(day_match.group(1))
+                    # Determine year
+                    year = now.year
+                    # If the date has passed this year, use next year
+                    test_date = datetime(year, month_num, day)
+                    if test_date < now:
+                        year += 1
+                    
+                    dt = datetime(year, month_num, day, hour, minute, 0)
+                    logger.info(f"[Google Calendar] Parsed '{month_name} {day}' as: {dt}")
+                    return dt
+        
+        # Handle numeric date format (1/4, 01/04)
+        date_match = re.search(r'(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?', start_time)
+        if date_match:
+            month = int(date_match.group(1))
+            day = int(date_match.group(2))
+            year = int(date_match.group(3)) if date_match.group(3) else now.year
+            if year < 100:
+                year += 2000
+            dt = datetime(year, month, day, hour, minute, 0)
+            logger.info(f"[Google Calendar] Parsed numeric date as: {dt}")
+            return dt
+        
+        # Default: tomorrow at the extracted/default time
+        dt = now + timedelta(days=1)
+        dt = dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        logger.info(f"[Google Calendar] Could not parse, defaulting to tomorrow: {dt}")
+        return dt
+
     async def _create_event(self, args: Dict[str, Any], google_token: Optional[str]) -> Dict[str, Any]:
         """Create a new calendar event"""
         title = args.get("title")
         description = args.get("description", "")
-        start_time = args.get("start_time")
+        start_time = args.get("start_time", "tomorrow at 2pm")
         duration = args.get("duration_minutes", 60)
         attendee_email = args.get("attendee_email")
         attendee_name = args.get("attendee_name", "")
         
-        # Parse start time (simplified for demo)
-        try:
-            # Handle relative dates
-            if "tomorrow" in start_time.lower():
-                start_dt = datetime.now() + timedelta(days=1)
-                start_dt = start_dt.replace(hour=14, minute=0)  # Default 2pm
-            elif "next" in start_time.lower():
-                start_dt = datetime.now() + timedelta(days=7)
-                start_dt = start_dt.replace(hour=10, minute=0)  # Default 10am
-            else:
-                start_dt = datetime.fromisoformat(start_time.replace("Z", ""))
-        except:
-            start_dt = datetime.now() + timedelta(days=1, hours=14)
-        
+        # Parse start time with improved parser
+        start_dt = self._parse_date_time(start_time)
         end_dt = start_dt + timedelta(minutes=duration)
+        
+        logger.info(f"[Google Calendar] Creating event '{title}' at {start_dt.isoformat()}")
         
         event_data = {
             "summary": title,
