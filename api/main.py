@@ -28,7 +28,7 @@ from auth.token_vault import TokenVaultClient
 from mcp_server.wealth_mcp import WealthMCP
 
 # Import tools
-from tools.google_calendar import GoogleCalendarTools
+from auth.google_calendar import GoogleCalendarTools
 from tools.salesforce_tools import SalesforceTools
 
 # Import Claude service
