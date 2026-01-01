@@ -139,19 +139,19 @@ const CATEGORIES: Category[] = [
           { 
             id: 'sf-1', 
             text: 'Use Salesforce to look up the contact details for Marcus Thompson. I need his phone number and email for a follow-up call about his portfolio.', 
-            description: 'Contact lookup', 
+            description: 'Contact lookup - Marcus', 
             action: 'READ' 
           },
           { 
             id: 'sf-2', 
-            text: 'Use Salesforce to show me all my open opportunities with expected close dates this quarter. I want to review my Q1 pipeline status for the team meeting.', 
-            description: 'Pipeline view', 
+            text: 'Use Salesforce to get opportunities for Elena Rodriguez. I want to see the status of her retirement rollover deal.', 
+            description: 'Opportunities for Elena', 
             action: 'READ' 
           },
           { 
             id: 'sf-3', 
-            text: 'Use Salesforce to find accounts in the Technology sector. I am preparing for our wealth management prospecting campaign.', 
-            description: 'Account search', 
+            text: 'Use Salesforce to search for contacts at Chen Industries.', 
+            description: 'Search by company', 
             action: 'READ' 
           },
         ]
@@ -163,8 +163,8 @@ const CATEGORIES: Category[] = [
         prompts: [
           { 
             id: 'sf-4', 
-            text: 'Use Salesforce to create a new contact for James Chen at Chen Industries. His email is jchen@chenindustries.com and phone is 415-555-0123. He is a potential high-net-worth client referral.', 
-            description: 'Create contact', 
+            text: 'Use Salesforce to create a new contact for Sarah Miller at Miller Family Office. Her email is sarah.miller@millerfamily.com and phone is 415-555-0199. She is a potential high-net-worth client referral.', 
+            description: 'Create new contact', 
             action: 'CREATE' 
           },
           { 
@@ -175,7 +175,7 @@ const CATEGORIES: Category[] = [
           },
           { 
             id: 'sf-6', 
-            text: 'Use Salesforce to add a note to the Thompson Financial account with title "Client Meeting Notes" and body: Discussed retirement timeline, client interested in increasing bond allocation. Follow up on 401k rollover options.', 
+            text: 'Use Salesforce to add a note to the Thompson Family Trust account with title "Client Meeting Notes" and body: Discussed retirement timeline, client interested in increasing bond allocation. Follow up on tax-loss harvesting options.', 
             description: 'Add account note', 
             action: 'CREATE' 
           },
@@ -185,18 +185,18 @@ const CATEGORIES: Category[] = [
         id: 'sf-update',
         name: 'Update - Opportunities',
         icon: '✏️',
-        info: 'Updates opportunity stage. Valid stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Negotiation/Review, Closed Won, Closed Lost',
+        info: 'Updates opportunity stage. Valid stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Proposal, Negotiation, Closed Won, Closed Lost',
         prompts: [
           { 
             id: 'sf-7', 
-            text: 'Use Salesforce to update the opportunity stage for Thompson Financial to Negotiation/Review.', 
-            description: 'Update to Negotiation', 
+            text: 'Use Salesforce to update the opportunity stage for Portfolio Rebalancing - Thompson to Negotiation.', 
+            description: 'Update Thompson to Negotiation', 
             action: 'UPDATE' 
           },
           { 
             id: 'sf-8', 
-            text: 'Use Salesforce to update the opportunity stage for Thompson Financial to Closed Won.', 
-            description: 'Mark as Closed Won', 
+            text: 'Use Salesforce to update the opportunity stage for Retirement Rollover - Rodriguez to Closed Won.', 
+            description: 'Mark Rodriguez as Closed Won', 
             action: 'UPDATE' 
           },
         ]
@@ -220,7 +220,7 @@ const CATEGORIES: Category[] = [
           },
           { 
             id: 'sf-11', 
-            text: 'Use Salesforce to find opportunities with value over $500,000.', 
+            text: 'Use Salesforce to find opportunities with value over $200,000.', 
             description: 'High-value opportunities', 
             action: 'READ' 
           },
