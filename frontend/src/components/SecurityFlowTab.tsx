@@ -277,7 +277,7 @@ function decodeJWT(token: string): any {
   }
 }
 
-function TokenCard({ title, token, color, stepNumber, icon, wasUsed, isOpaque }: { title: string; token?: string; color: string; stepNumber: number | string; icon?: string; wasUsed?: boolean; isOpaque?: boolean }) {
+function TokenCard({ title, token, color, stepNumber, icon, wasUsed, isOpaque, children }: { title: string; token?: string; color: string; stepNumber: number | string; icon?: string; wasUsed?: boolean; isOpaque?: boolean; children?: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   
@@ -358,6 +358,9 @@ function TokenCard({ title, token, color, stepNumber, icon, wasUsed, isOpaque }:
                     </pre>
                   </div>
                 )}
+                
+                {/* Additional children content */}
+                {children}
               </>
             ) : (
               <div className="bg-slate-800/50 rounded p-2">
@@ -811,78 +814,78 @@ export default function SecurityFlowTab({
                 color="border-indigo-500/30 bg-indigo-900/10" 
                 stepNumber={2}
                 icon="🔑"
-              />
-              
-              {/* ID-JAG Secure Flow - Expandable */}
-              {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
-                <details className="mt-2">
-                  <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300 flex items-center gap-1">
-                    <span>▶</span> ID-JAG Secure Flow
-                  </summary>
-                  <div className="mt-2 p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
+              >
+                {/* ID-JAG Secure Flow - Inside TokenCard expansion */}
+                {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
+                  <div className="mt-3 p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-cyan-400 text-xs">●</span>
+                      <span className="text-xs font-semibold text-cyan-400">ID-JAG Secure Flow</span>
+                    </div>
+                    
                     {/* Chat Assistant Steps */}
-                    <div className="mb-3">
-                      <span className="text-[10px] font-medium text-cyan-400 px-2 py-0.5 bg-cyan-500/20 rounded">Chat Assistant (STEPS 1-3)</span>
+                    <div className="mb-2">
+                      <span className="text-[9px] font-medium text-cyan-400 px-1.5 py-0.5 bg-cyan-500/20 rounded">Chat Assistant (STEPS 1-3)</span>
                     </div>
                     
                     <div className="space-y-0">
                       {/* Step 1 */}
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
-                          <div className="w-5 h-5 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">1</div>
-                          <div className="w-0.5 h-5 bg-cyan-500/30"></div>
+                          <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
+                          <div className="w-0.5 h-4 bg-cyan-500/30"></div>
                         </div>
                         <div className="pb-1">
-                          <p className="text-[11px] font-medium text-white">ID → ID-JAG</p>
-                          <p className="text-[9px] text-slate-400">Exchange user ID token for ID-JAG token</p>
+                          <p className="text-[10px] font-medium text-white">ID → ID-JAG</p>
+                          <p className="text-[8px] text-slate-400">Exchange user ID token for ID-JAG token</p>
                         </div>
                       </div>
                       
                       {/* Step 2 */}
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
-                          <div className="w-5 h-5 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">2</div>
-                          <div className="w-0.5 h-5 bg-cyan-500/30"></div>
+                          <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
+                          <div className="w-0.5 h-4 bg-cyan-500/30"></div>
                         </div>
                         <div className="pb-1">
-                          <p className="text-[11px] font-medium text-white">Verify ID-JAG</p>
-                          <p className="text-[9px] text-slate-400">Validate ID-JAG token (audit trail)</p>
+                          <p className="text-[10px] font-medium text-white">Verify ID-JAG</p>
+                          <p className="text-[8px] text-slate-400">Validate ID-JAG token (audit trail)</p>
                         </div>
                       </div>
                       
                       {/* Step 3 */}
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
-                          <div className="w-5 h-5 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">3</div>
-                          <div className="w-0.5 h-5 bg-cyan-500/30"></div>
+                          <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
+                          <div className="w-0.5 h-4 bg-cyan-500/30"></div>
                         </div>
                         <div className="pb-1">
-                          <p className="text-[11px] font-medium text-white">ID-JAG → MCP Token</p>
-                          <p className="text-[9px] text-slate-400">Exchange ID-JAG for authorization server token</p>
+                          <p className="text-[10px] font-medium text-white">ID-JAG → MCP Token</p>
+                          <p className="text-[8px] text-slate-400">Exchange ID-JAG for authorization server token</p>
                         </div>
                       </div>
                       
                       {/* MCP Server Step */}
-                      <div className="mt-2 mb-2">
-                        <span className="text-[10px] font-medium text-amber-400 px-2 py-0.5 bg-amber-500/20 rounded">MCP Server (STEP 4)</span>
+                      <div className="mt-1 mb-1">
+                        <span className="text-[9px] font-medium text-amber-400 px-1.5 py-0.5 bg-amber-500/20 rounded">MCP Server (STEP 4)</span>
                       </div>
                       
                       {/* Step 4 */}
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
-                          <div className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">4</div>
+                          <div className="w-4 h-4 rounded-full bg-amber-500 text-white text-[8px] flex items-center justify-center font-bold">4</div>
                         </div>
                         <div>
-                          <p className="text-[11px] font-medium text-white">Validate & Execute</p>
-                          <p className="text-[9px] text-slate-400">
+                          <p className="text-[10px] font-medium text-white">Validate & Execute</p>
+                          <p className="text-[8px] text-slate-400">
                             Verified access. Executing: {toolsCalled.length > 0 ? toolsCalled[toolsCalled.length - 1] : 'pending'}
                           </p>
                         </div>
                       </div>
                     </div>
                   </div>
-                </details>
-              )}
+                )}
+              </TokenCard>
             </div>
 
             {/* Step 3: MCP Token */}
@@ -1037,17 +1040,6 @@ export default function SecurityFlowTab({
             )}
             
             {/* Security Badge */}
-            <div className="mt-4 p-3 rounded-xl border border-green-500/30 bg-green-900/10">
-              <div className="flex items-start gap-2">
-                <span className="text-green-400 mt-0.5">✓</span>
-                <div>
-                  <p className="text-xs font-semibold text-green-400">Secure Cross-App Access</p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    ID tokens are never exposed to MCP server. Only short-lived access tokens are used.
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
