@@ -293,7 +293,7 @@ export default function ApexWealthAdvisor() {
 
   // Main app
   return (
-    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Header with tabs */}
       <header className="border-b border-slate-800 bg-slate-900">
         <div className="px-4 py-3">
@@ -340,22 +340,6 @@ export default function ApexWealthAdvisor() {
                 }`}
               >
                 <span>📖</span> Demo Guide
-              </button>
-              
-              {/* Prompts Button */}
-              <button
-                onClick={() => setShowPromptLibrary(true)}
-                className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-              >
-                <span>📋</span> Prompts
-              </button>
-              
-              {/* New Chat Button */}
-              <button
-                onClick={handleNewChat}
-                className="px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-700"
-              >
-                <span>+</span> New Chat
               </button>
             </div>
 
@@ -461,25 +445,24 @@ export default function ApexWealthAdvisor() {
                 <div className="border-t border-slate-700 bg-slate-900">
                   {/* Input Row */}
                   <div className="p-4">
-                    <form onSubmit={handleSubmit} className="flex items-center gap-3">
-                      <div className="flex-1 relative">
-                        <input
+                    <form onSubmit={handleSubmit} className="flex items-end gap-3">
+                      <div className="flex-1">
+                        <textarea
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (input.trim() && !isLoading) {
+                                handleSubmit(e);
+                              }
+                            }
+                          }}
                           placeholder="Ask about clients, portfolios, calendar, transactions..."
-                          className="w-full p-4 pr-12 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-slate-400 text-sm"
+                          className="w-full p-4 bg-slate-800 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-white placeholder-slate-400 text-sm resize-none"
                           disabled={isLoading}
+                          rows={2}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPromptLibrary(true)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-amber-400 transition-colors"
-                          title="Browse prompts"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                          </svg>
-                        </button>
                       </div>
                       <button
                         type="submit"
