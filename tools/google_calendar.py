@@ -223,7 +223,9 @@ class GoogleCalendarTools:
             try:
                 # Use UTC for API calls, let Google handle timezone conversion
                 now_utc = datetime.now(timezone.utc)
+                # Set timeMax to END of the target day (23:59:59) to include all events on that day
                 time_max_utc = now_utc + timedelta(days=days_ahead)
+                time_max_utc = time_max_utc.replace(hour=23, minute=59, second=59)
                 
                 logger.info(f"[Google Calendar] Calling events.list API (next {days_ahead} days)")
                 logger.info(f"[Google Calendar] timeMin: {now_utc.isoformat()}, timeMax: {time_max_utc.isoformat()}")
