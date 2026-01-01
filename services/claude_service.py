@@ -15,16 +15,9 @@ logger = logging.getLogger(__name__)
 # Define which tools use which security flow
 MCP_TOOLS = ["get_client", "list_clients", "get_portfolio", "process_payment", "update_client"]
 CALENDAR_TOOLS = ["list_calendar_events", "get_calendar_event", "create_calendar_event", "check_availability", "cancel_calendar_event"]
-SALESFORCE_TOOLS = [
-    "search_salesforce_contacts",
-    "get_contact_opportunities", 
-    "get_sales_pipeline",
-    "get_high_value_accounts",
-    "create_salesforce_task",
-    "create_salesforce_note",
-    "get_pipeline_value",
-    "update_opportunity_stage"
-]
+SALESFORCE_TOOLS = ["search_salesforce_contacts", "create_salesforce_contact", "get_contact_opportunities", 
+                    "get_sales_pipeline", "get_high_value_accounts", "create_salesforce_task", 
+                    "create_salesforce_note", "get_pipeline_value", "update_opportunity_stage"]
 
 
 class ClaudeService:
@@ -33,7 +26,7 @@ class ClaudeService:
     Routes tool calls to appropriate backend:
     - Internal MCP tools: Okta XAA (ID-JAG token exchange)
     - Calendar tools: Auth0 Token Vault (Google Calendar)
-    - Salesforce tools: Auth0 Token Vault (Salesforce)
+    - Salesforce tools: Auth0 Token Vault (Phase 2)
     """
     
     def __init__(self):
@@ -67,21 +60,10 @@ These tools access Google Calendar via Auth0 Token Vault:
 - check_availability: Check if a time slot is free
 - cancel_calendar_event: Cancel a meeting
 
-### Salesforce CRM (Auth0 Token Vault)
-These tools access Salesforce CRM via Auth0 Token Vault:
-- search_salesforce_contacts: Search for contacts by name
-- get_contact_opportunities: Get opportunities for a contact
-- get_sales_pipeline: View sales pipeline by stage
-- get_high_value_accounts: Find high-value opportunities (>$500K)
-- create_salesforce_task: Create follow-up tasks
-- create_salesforce_note: Add notes to accounts
-- get_pipeline_value: Get total pipeline value
-- update_opportunity_stage: Update opportunity stage
-
 ## Security Behaviors
 
 1. **Okta XAA (Cross-App Access)**: All internal portfolio tools use ID-JAG token exchange for secure access
-2. **Auth0 Token Vault**: Calendar and Salesforce tools use Token Vault to retrieve credentials securely
+2. **Auth0 Token Vault**: Calendar tools use Token Vault to retrieve Google credentials securely
 3. **CIBA Step-Up**: Payments over $10,000 require step-up authentication (push notification)
 4. **Risk Policy**: Payments to unverified recipients (e.g., "Offshore Holdings LLC") are blocked
 
@@ -93,145 +75,7 @@ These tools access Salesforce CRM via Auth0 Token Vault:
 
 When security controls block an action, explain why clearly and suggest alternatives."""
     
-    def _get_salesforce_tools(self) -> List[Dict]:
-        """Get Salesforce tool definitions"""
-        return [
-            {
-                "name": "search_salesforce_contacts",
-                "description": "Search for contacts in Salesforce by name. Returns contact details including email, phone, title, and associated account.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "search_term": {
-                            "type": "string",
-                            "description": "Name or partial name to search for"
-                        }
-                    },
-                    "required": ["search_term"]
-                }
-            },
-            {
-                "name": "get_contact_opportunities",
-                "description": "Get all opportunities associated with a contact's account. Shows opportunity name, amount, stage, and close date.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "contact_name": {
-                            "type": "string",
-                            "description": "Name of the contact to look up opportunities for"
-                        }
-                    },
-                    "required": ["contact_name"]
-                }
-            },
-            {
-                "name": "get_sales_pipeline",
-                "description": "Get the current sales pipeline summary grouped by stage. Shows count and total value for each stage.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "stage_filter": {
-                            "type": "string",
-                            "description": "Optional: Filter to a specific stage"
-                        }
-                    }
-                }
-            },
-            {
-                "name": "get_high_value_accounts",
-                "description": "Get opportunities above a certain value threshold. Default is $500,000.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "min_amount": {
-                            "type": "number",
-                            "description": "Minimum opportunity amount (default: 500000)"
-                        }
-                    }
-                }
-            },
-            {
-                "name": "create_salesforce_task",
-                "description": "Create a follow-up task for a contact in Salesforce.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "subject": {
-                            "type": "string",
-                            "description": "Task subject/title"
-                        },
-                        "contact_name": {
-                            "type": "string",
-                            "description": "Name of the contact to associate the task with"
-                        },
-                        "due_date": {
-                            "type": "string",
-                            "description": "Due date in YYYY-MM-DD format"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Task description/notes"
-                        },
-                        "priority": {
-                            "type": "string",
-                            "enum": ["High", "Normal", "Low"],
-                            "description": "Task priority"
-                        }
-                    },
-                    "required": ["subject", "contact_name"]
-                }
-            },
-            {
-                "name": "create_salesforce_note",
-                "description": "Add a note to an account in Salesforce.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "account_name": {
-                            "type": "string",
-                            "description": "Name of the account to add the note to"
-                        },
-                        "title": {
-                            "type": "string",
-                            "description": "Note title"
-                        },
-                        "body": {
-                            "type": "string",
-                            "description": "Note content"
-                        }
-                    },
-                    "required": ["account_name", "title", "body"]
-                }
-            },
-            {
-                "name": "get_pipeline_value",
-                "description": "Get the total value and count of all open opportunities in the pipeline.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {}
-                }
-            },
-            {
-                "name": "update_opportunity_stage",
-                "description": "Update the stage of an opportunity. Common stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Id. Decision Makers, Perception Analysis, Proposal/Price Quote, Negotiation/Review, Closed Won, Closed Lost.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "opportunity_name": {
-                            "type": "string",
-                            "description": "Name or partial name of the opportunity"
-                        },
-                        "new_stage": {
-                            "type": "string",
-                            "description": "New stage to set"
-                        }
-                    },
-                    "required": ["opportunity_name", "new_stage"]
-                }
-            }
-        ]
-    
-    def _convert_tools_to_claude(self, mcp_tools: List[Dict], calendar_tools: List[Dict]) -> List[Dict]:
+    def _convert_tools_to_claude(self, mcp_tools: List[Dict], calendar_tools: List[Dict], salesforce_tools: List[Dict] = None) -> List[Dict]:
         """Convert tool definitions to Claude tool format"""
         claude_tools = []
         
@@ -252,65 +96,15 @@ When security controls block an action, explain why clearly and suggest alternat
             })
         
         # Add Salesforce tools
-        for tool in self._get_salesforce_tools():
-            claude_tools.append({
-                "name": tool["name"],
-                "description": tool["description"] + " [Security: Auth0 Token Vault - Salesforce]",
-                "input_schema": tool["parameters"]
-            })
+        if salesforce_tools:
+            for tool in salesforce_tools:
+                claude_tools.append({
+                    "name": tool["name"],
+                    "description": tool["description"] + " [Security: Auth0 Token Vault]",
+                    "input_schema": tool.get("input_schema", tool.get("parameters", {}))
+                })
         
         return claude_tools
-    
-    async def _execute_salesforce_tool(self, tool_name: str, tool_input: Dict, salesforce_token: str) -> Dict:
-        """Execute a Salesforce tool"""
-        # Import here to avoid circular imports
-        from tools.salesforce_tools import (
-            search_contacts, get_contact_opportunities, get_sales_pipeline,
-            get_high_value_accounts, create_task, create_note,
-            get_pipeline_value, update_opportunity_stage
-        )
-        
-        if tool_name == "search_salesforce_contacts":
-            return await search_contacts(salesforce_token, tool_input.get("search_term", ""))
-        
-        elif tool_name == "get_contact_opportunities":
-            return await get_contact_opportunities(salesforce_token, tool_input.get("contact_name", ""))
-        
-        elif tool_name == "get_sales_pipeline":
-            return await get_sales_pipeline(salesforce_token, tool_input.get("stage_filter"))
-        
-        elif tool_name == "get_high_value_accounts":
-            return await get_high_value_accounts(salesforce_token, tool_input.get("min_amount", 500000))
-        
-        elif tool_name == "create_salesforce_task":
-            return await create_task(
-                salesforce_token,
-                subject=tool_input.get("subject", ""),
-                contact_name=tool_input.get("contact_name", ""),
-                due_date=tool_input.get("due_date"),
-                description=tool_input.get("description"),
-                priority=tool_input.get("priority", "Normal")
-            )
-        
-        elif tool_name == "create_salesforce_note":
-            return await create_note(
-                salesforce_token,
-                account_name=tool_input.get("account_name", ""),
-                title=tool_input.get("title", ""),
-                body=tool_input.get("body", "")
-            )
-        
-        elif tool_name == "get_pipeline_value":
-            return await get_pipeline_value(salesforce_token)
-        
-        elif tool_name == "update_opportunity_stage":
-            return await update_opportunity_stage(
-                salesforce_token,
-                opportunity_name=tool_input.get("opportunity_name", ""),
-                new_stage=tool_input.get("new_stage", "")
-            )
-        
-        return {"error": f"Unknown Salesforce tool: {tool_name}"}
     
     async def process_message(
         self,
@@ -321,6 +115,7 @@ When security controls block an action, explain why clearly and suggest alternat
         mcp_server = None,
         calendar_tools = None,
         google_token: Optional[str] = None,
+        salesforce_tools = None,
         salesforce_token: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -335,6 +130,7 @@ When security controls block an action, explain why clearly and suggest alternat
             mcp_server: MCP server instance for internal tools
             calendar_tools: Google Calendar tools instance
             google_token: Google token from Auth0 Token Vault
+            salesforce_tools: Salesforce tools instance
             salesforce_token: Salesforce token from Auth0 Token Vault
         """
         if not self.client:
@@ -357,6 +153,7 @@ When security controls block an action, explain why clearly and suggest alternat
             all_tools = []
             mcp_tool_list = []
             calendar_tool_list = []
+            salesforce_tool_list = []
             
             if mcp_server:
                 mcp_tool_list = mcp_server.list_tools()
@@ -364,7 +161,10 @@ When security controls block an action, explain why clearly and suggest alternat
             if calendar_tools:
                 calendar_tool_list = calendar_tools.list_tools()
             
-            all_tools = self._convert_tools_to_claude(mcp_tool_list, calendar_tool_list)
+            if salesforce_tools:
+                salesforce_tool_list = salesforce_tools.list_tools()
+            
+            all_tools = self._convert_tools_to_claude(mcp_tool_list, calendar_tool_list, salesforce_tool_list)
             
             # Initial Claude call
             response = self.client.messages.create(
@@ -379,7 +179,6 @@ When security controls block an action, explain why clearly and suggest alternat
             tools_called = []
             xaa_tools_called = []
             vault_tools_called = []
-            salesforce_tools_called = []
             tool_results = []
             
             while response.stop_reason == "tool_use":
@@ -420,25 +219,22 @@ When security controls block an action, explain why clearly and suggest alternat
                                     tool_input,
                                     google_token
                                 )
-                                result["security_flow"] = "Auth0 Token Vault (Google)"
+                                result["security_flow"] = "Auth0 Token Vault"
                             else:
                                 result = {"error": "Calendar tools not available"}
                         
                         elif tool_name in SALESFORCE_TOOLS:
                             # Salesforce tool - use Auth0 Token Vault
-                            salesforce_tools_called.append(tool_name)
-                            if salesforce_token:
-                                result = await self._execute_salesforce_tool(
+                            vault_tools_called.append(tool_name)
+                            if salesforce_tools:
+                                result = await salesforce_tools.call_tool(
                                     tool_name,
                                     tool_input,
                                     salesforce_token
                                 )
-                                result["security_flow"] = "Auth0 Token Vault (Salesforce)"
+                                result["security_flow"] = "Auth0 Token Vault"
                             else:
-                                result = {
-                                    "error": "Salesforce not connected",
-                                    "message": "Your Salesforce account is not linked. Please link your Salesforce account via Token Vault."
-                                }
+                                result = {"error": "Salesforce tools not available"}
                         
                         else:
                             result = {"error": f"Unknown tool: {tool_name}"}
@@ -476,10 +272,8 @@ When security controls block an action, explain why clearly and suggest alternat
                 "security_info": {
                     "xaa_tools": xaa_tools_called,
                     "vault_tools": vault_tools_called,
-                    "salesforce_tools": salesforce_tools_called,
                     "mcp_token_used": bool(mcp_token and xaa_tools_called),
-                    "google_token_used": bool(google_token and vault_tools_called),
-                    "salesforce_token_used": bool(salesforce_token and salesforce_tools_called)
+                    "google_token_used": bool(google_token and vault_tools_called)
                 } if tools_called else None
             }
             

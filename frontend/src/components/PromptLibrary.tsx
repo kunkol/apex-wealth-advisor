@@ -169,22 +169,60 @@ const CATEGORIES: Category[] = [
           },
           { 
             id: 'sf-5', 
-            text: 'Use Salesforce to create a new opportunity called "Trust Fund Setup" for account Chen Industries with an expected value of $500,000 and close date of March 31st, 2026.', 
-            description: 'Create opportunity', 
+            text: 'Use Salesforce to create a follow-up task for Marcus Thompson with subject "Q1 Portfolio Review Prep" due on January 10th, 2026. Priority is High. Description: Prepare portfolio analysis and rebalancing recommendations before client meeting.', 
+            description: 'Create follow-up task', 
+            action: 'CREATE' 
+          },
+          { 
+            id: 'sf-6', 
+            text: 'Use Salesforce to add a note to the Thompson Financial account with title "Client Meeting Notes" and body: Discussed retirement timeline, client interested in increasing bond allocation. Follow up on 401k rollover options.', 
+            description: 'Add account note', 
             action: 'CREATE' 
           },
         ]
       },
       {
         id: 'sf-update',
-        name: 'Update - Records',
+        name: 'Update - Opportunities',
         icon: '✏️',
+        info: 'Updates opportunity stage. Valid stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Negotiation/Review, Closed Won, Closed Lost',
         prompts: [
           { 
-            id: 'sf-6', 
-            text: 'Use Salesforce to update the opportunity stage to Negotiation for the most recent opportunity. Add a note that we received verbal approval yesterday.', 
-            description: 'Update opportunity stage', 
+            id: 'sf-7', 
+            text: 'Use Salesforce to update the opportunity stage for Thompson Financial to Negotiation/Review.', 
+            description: 'Update to Negotiation', 
             action: 'UPDATE' 
+          },
+          { 
+            id: 'sf-8', 
+            text: 'Use Salesforce to update the opportunity stage for Thompson Financial to Closed Won.', 
+            description: 'Mark as Closed Won', 
+            action: 'UPDATE' 
+          },
+        ]
+      },
+      {
+        id: 'sf-pipeline',
+        name: 'Pipeline and Analytics',
+        icon: '📊',
+        prompts: [
+          { 
+            id: 'sf-9', 
+            text: 'Use Salesforce to show me the current sales pipeline summary grouped by stage.', 
+            description: 'Pipeline by stage', 
+            action: 'READ' 
+          },
+          { 
+            id: 'sf-10', 
+            text: 'Use Salesforce to get the total value of all open opportunities in the pipeline.', 
+            description: 'Total pipeline value', 
+            action: 'READ' 
+          },
+          { 
+            id: 'sf-11', 
+            text: 'Use Salesforce to find opportunities with value over $500,000.', 
+            description: 'High-value opportunities', 
+            action: 'READ' 
           },
         ]
       },

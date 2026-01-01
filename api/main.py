@@ -29,6 +29,7 @@ from mcp_server.wealth_mcp import WealthMCP
 
 # Import tools
 from tools.google_calendar import GoogleCalendarTools
+from tools.salesforce_tools import SalesforceTools
 
 # Import Claude service
 from services.claude_service import ClaudeService
@@ -88,6 +89,10 @@ logger.info(f"[INIT] Internal MCP server initialized with {len(wealth_mcp.list_t
 # Google Calendar Tools - uses Token Vault
 calendar_tools = GoogleCalendarTools(token_vault_client=token_vault)
 logger.info(f"[INIT] Google Calendar tools initialized with {len(calendar_tools.list_tools())} tools")
+
+# Salesforce Tools - uses Token Vault
+salesforce_tools = SalesforceTools()
+logger.info(f"[INIT] Salesforce tools initialized with {len(salesforce_tools.list_tools())} tools")
 
 # Claude AI Service
 claude_service = ClaudeService()
@@ -221,6 +226,7 @@ async def chat(request: ChatRequest, http_request: Request):
             mcp_server=wealth_mcp,
             calendar_tools=calendar_tools,
             google_token=google_token_info.get("access_token") if google_token_info else None,
+            salesforce_tools=salesforce_tools,
             salesforce_token=salesforce_token_info.get("access_token") if salesforce_token_info else None
         )
         
