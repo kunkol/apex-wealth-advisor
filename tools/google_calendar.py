@@ -1,9 +1,9 @@
 """
-import re
 Google Calendar Tools
 Accesses Google Calendar API via Auth0 Token Vault
 """
 
+import re
 import logging
 import os
 from typing import Dict, Any, List, Optional
