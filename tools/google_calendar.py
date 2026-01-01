@@ -389,6 +389,18 @@ class GoogleCalendarTools:
         except:
             pass
         
+        # Try YYYY-MM-DD HH:MM format (e.g., "2026-01-01 16:00 PST")
+        date_time_match = re.search(r'(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})', start_time)
+        if date_time_match:
+            year = int(date_time_match.group(1))
+            month = int(date_time_match.group(2))
+            day = int(date_time_match.group(3))
+            hour = int(date_time_match.group(4))
+            minute = int(date_time_match.group(5))
+            dt = datetime(year, month, day, hour, minute, 0)
+            logger.info(f"[Google Calendar] Parsed YYYY-MM-DD HH:MM format: {dt}")
+            return dt, user_timezone
+        
         # Extract time component FIRST - look for patterns like "10am", "2pm", "at 10am", "at 2:30pm"
         # Must have am/pm or be preceded by "at" to distinguish from date numbers
         hour = 14  # Default 2pm
