@@ -458,12 +458,18 @@ class GoogleCalendarTools:
                 day_match = re.search(r'(\d{1,2})(?:st|nd|rd|th)?', start_time_lower)
                 if day_match:
                     day = int(day_match.group(1))
-                    # Determine year
-                    year = now.year
-                    # If the date has passed this year, use next year
-                    test_date = datetime(year, month_num, day)
-                    if test_date < now:
-                        year += 1
+                    
+                    # Check if year is explicitly specified (e.g., "2026", "2025")
+                    year_match = re.search(r'\b(20\d{2})\b', start_time)
+                    if year_match:
+                        year = int(year_match.group(1))
+                        logger.info(f"[Google Calendar] Explicit year found: {year}")
+                    else:
+                        # Determine year - only use next year if date has passed AND no explicit year
+                        year = now.year
+                        test_date = datetime(year, month_num, day)
+                        if test_date < now:
+                            year += 1
                     
                     dt = datetime(year, month_num, day, hour, minute, 0)
                     logger.info(f"[Google Calendar] Parsed '{month_name} {day}' as: {dt} ({user_timezone})")
