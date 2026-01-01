@@ -5,6 +5,7 @@ Accesses Google Calendar API via Auth0 Token Vault
 
 import logging
 import os
+import re
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta, timezone
 import requests
