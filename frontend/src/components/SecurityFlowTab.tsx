@@ -992,14 +992,29 @@ export default function SecurityFlowTab({
                     </div>
                   </div>
                 )}
-                {/* Audience info */}
+                {/* Audience info - Show ALL audiences based on tools called */}
                 {xaaInfo?.mcp_token && (
                   <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
-                    <div className="flex items-center gap-2 text-[10px]">
-                      <span className="text-slate-500">Audience:</span>
-                      <span className="text-green-400 font-mono">
-                        {usedCalendar ? 'https://google.com' : usedSalesforce ? 'https://salesforce.com' : 'apex-wealth-mcp'}
-                      </span>
+                    <div className="flex items-start gap-2 text-[10px]">
+                      <span className="text-slate-500 pt-0.5">Audience:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {/* MCP audience - if any MCP tools were used */}
+                        {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
+                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">apex-wealth-mcp</span>
+                        )}
+                        {/* Salesforce audience */}
+                        {usedSalesforce && (
+                          <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded font-mono">https://salesforce.com</span>
+                        )}
+                        {/* Google audience */}
+                        {usedCalendar && (
+                          <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded font-mono">https://google.com</span>
+                        )}
+                        {/* Fallback if no tools called */}
+                        {toolsCalled.length === 0 && (
+                          <span className="text-slate-400">Varies by target resource</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] mt-1">
                       <span className="text-slate-500">Grant:</span>
@@ -1285,89 +1300,6 @@ export default function SecurityFlowTab({
                 </div>
               )}
             </div>
-
-            {/* Tool Execution - Separate box with spacing (not a step) */}
-            {toolsCalled.length > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-purple-400">⚡</span>
-                  <span className="text-xs font-medium text-slate-300">Tool Execution</span>
-                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">MCP Protocol</span>
-                </div>
-                <div className="rounded-lg border border-slate-600 bg-slate-800/50 overflow-hidden">
-                  <div className="p-3">
-                    {/* One-liner */}
-                    <div className="mb-3 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
-                      <p className="text-xs text-amber-400">💡 "AI executes tools using all the right credentials"</p>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium text-white">Execution Summary</span>
-                      <span className="text-green-400 text-xs ml-auto">✓ Complete</span>
-                    </div>
-                    
-                    {/* MCP Servers - Show ALL that were used */}
-                    <div className="flex items-start gap-2 mb-2">
-                      <span className="text-xs text-slate-500 w-16 pt-1">Servers</span>
-                      <div className="flex flex-wrap gap-1">
-                        {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded border border-emerald-500/30">
-                            <span className="text-emerald-400">🏢</span>
-                            <span className="text-xs text-emerald-300 font-medium">Apex Wealth MCP</span>
-                          </div>
-                        )}
-                        {toolsCalled.some(t => SALESFORCE_TOOLS.includes(t)) && (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-sky-900/30 rounded border border-sky-500/30">
-                            <span className="text-sky-400">☁️</span>
-                            <span className="text-xs text-sky-300 font-medium">Salesforce CRM</span>
-                          </div>
-                        )}
-                        {toolsCalled.some(t => CALENDAR_TOOLS.includes(t)) && (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-rose-900/30 rounded border border-rose-500/30">
-                            <span className="text-rose-400">📅</span>
-                            <span className="text-xs text-rose-300 font-medium">Google Calendar</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Tools Executed */}
-                    <div className="flex items-start gap-2">
-                      <span className="text-xs text-slate-500 w-16 pt-1">Tools</span>
-                      <div className="flex flex-wrap gap-1">
-                        {toolsCalled.map((tool, i) => (
-                          <span 
-                            key={i}
-                            className={`text-xs px-2 py-0.5 rounded font-mono ${
-                              CALENDAR_TOOLS.includes(tool) ? 'bg-rose-500/20 text-rose-400' :
-                              SALESFORCE_TOOLS.includes(tool) ? 'bg-sky-500/20 text-sky-400' :
-                              'bg-emerald-500/20 text-emerald-400'
-                            }`}
-                          >
-                            {tool}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Expandable details */}
-                  <details className="border-t border-slate-700">
-                    <summary className="px-3 py-2 text-xs text-slate-400 cursor-pointer hover:text-slate-300 bg-slate-800/50">
-                      View execution details
-                    </summary>
-                    <div className="px-3 pb-3 bg-slate-800/50">
-                      <div className="text-[10px] text-slate-400 space-y-1">
-                        <p>• Token validated by MCP server</p>
-                        <p>• Scopes verified: mcp:read</p>
-                        <p>• User identity: {session?.user?.email || 'Authenticated user'}</p>
-                        <p>• Access level: User-delegated permissions</p>
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              </div>
-            )}
             
             {/* Security Badge */}
           </div>
@@ -1405,7 +1337,82 @@ export default function SecurityFlowTab({
           </div>
           
           <div className="flex-1 overflow-y-auto p-4">
-            {displayEvents.length === 0 ? (
+            {/* Tool Execution Summary - At top of right column */}
+            {toolsCalled.length > 0 && (
+              <div className="mb-4">
+                <div className="rounded-lg border border-slate-600 bg-slate-800/50 overflow-hidden">
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-purple-400">⚡</span>
+                      <span className="text-sm font-medium text-white">Tool Execution</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">MCP Protocol</span>
+                      <span className="text-green-400 text-xs ml-auto">✓ Complete</span>
+                    </div>
+                    
+                    {/* MCP Servers - Show ALL that were used */}
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="text-xs text-slate-500 w-14 pt-1">Servers</span>
+                      <div className="flex flex-wrap gap-1">
+                        {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded border border-emerald-500/30">
+                            <span className="text-emerald-400 text-xs">🏢</span>
+                            <span className="text-[10px] text-emerald-300 font-medium">Apex Wealth MCP</span>
+                          </div>
+                        )}
+                        {toolsCalled.some(t => SALESFORCE_TOOLS.includes(t)) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-sky-900/30 rounded border border-sky-500/30">
+                            <span className="text-sky-400 text-xs">☁️</span>
+                            <span className="text-[10px] text-sky-300 font-medium">Salesforce CRM</span>
+                          </div>
+                        )}
+                        {toolsCalled.some(t => CALENDAR_TOOLS.includes(t)) && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-rose-900/30 rounded border border-rose-500/30">
+                            <span className="text-rose-400 text-xs">📅</span>
+                            <span className="text-[10px] text-rose-300 font-medium">Google Calendar</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Tools Executed */}
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-slate-500 w-14 pt-1">Tools</span>
+                      <div className="flex flex-wrap gap-1">
+                        {toolsCalled.map((tool, i) => (
+                          <span 
+                            key={i}
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                              CALENDAR_TOOLS.includes(tool) ? 'bg-rose-500/20 text-rose-400' :
+                              SALESFORCE_TOOLS.includes(tool) ? 'bg-sky-500/20 text-sky-400' :
+                              'bg-emerald-500/20 text-emerald-400'
+                            }`}
+                          >
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Expandable details */}
+                  <details className="border-t border-slate-700">
+                    <summary className="px-3 py-2 text-xs text-slate-400 cursor-pointer hover:text-slate-300 bg-slate-800/50">
+                      View execution details
+                    </summary>
+                    <div className="px-3 pb-3 bg-slate-800/50">
+                      <div className="text-[10px] text-slate-400 space-y-1">
+                        <p>• Token validated by MCP server</p>
+                        <p>• Scopes verified: mcp:read</p>
+                        <p>• User identity: {session?.user?.email || 'Authenticated user'}</p>
+                        <p>• Access level: User-delegated permissions</p>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            )}
+            
+            {displayEvents.length === 0 && toolsCalled.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 bg-slate-800 rounded-2xl flex items-center justify-center">
                   <span className="text-2xl">📋</span>
