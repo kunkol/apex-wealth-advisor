@@ -258,12 +258,41 @@ class GoogleCalendarTools:
                 
                 # Filter by search query if provided
                 if search_query:
-                    events = [
-                        e for e in events 
-                        if search_query in e.get("summary", "").lower() or
-                           any(search_query in a.get("displayName", "").lower() for a in e.get("attendees", []))
-                    ]
-                    logger.info(f"[Google Calendar] Filtered to {len(events)} events matching '{search_query}'")
+                    # Check if search_query contains a date pattern (e.g., "january 8", "jan 15 2026")
+                    date_filter = None
+                    months = {
+                        "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+                        "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12,
+                        "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12
+                    }
+                    
+                    search_lower = search_query.lower()
+                    for month_name, month_num in months.items():
+                        if month_name in search_lower:
+                            day_match = re.search(r'(\d{1,2})', search_query)
+                            if day_match:
+                                day = int(day_match.group(1))
+                                year_match = re.search(r'(20\d{2})', search_query)
+                                year = int(year_match.group(1)) if year_match else datetime.now().year
+                                date_filter = f"{year}-{month_num:02d}-{day:02d}"
+                                logger.info(f"[Google Calendar] Date filter detected: {date_filter}")
+                            break
+                    
+                    if date_filter:
+                        # Filter by date
+                        events = [
+                            e for e in events
+                            if e.get("start", {}).get("dateTime", e.get("start", {}).get("date", "")).startswith(date_filter)
+                        ]
+                        logger.info(f"[Google Calendar] Filtered to {len(events)} events on {date_filter}")
+                    else:
+                        # Filter by title/attendee (original behavior)
+                        events = [
+                            e for e in events 
+                            if search_query in e.get("summary", "").lower() or
+                               any(search_query in a.get("displayName", "").lower() for a in e.get("attendees", []))
+                        ]
+                        logger.info(f"[Google Calendar] Filtered to {len(events)} events matching '{search_query}'")
                 
                 return {
                     "events": events,
