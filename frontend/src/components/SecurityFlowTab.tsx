@@ -778,21 +778,21 @@ export default function SecurityFlowTab({
 
   return (
     <div className="h-full p-4 overflow-hidden">
-      <div className="h-full grid grid-cols-2 gap-4">
-        {/* LEFT: Token Flow */}
-        <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
+      <div className="h-full grid grid-cols-5 gap-4">
+        {/* LEFT: Token Flow - 60% (3 cols) */}
+        <div className="col-span-3 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-slate-800">
             <h2 className="text-lg font-bold text-white">🔐 Token Flow</h2>
-            <p className="text-xs text-slate-500">View decoded tokens at each step</p>
+            <p className="text-sm text-slate-500">View decoded tokens at each step</p>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* Step 1: Okta ID Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Step 1</span>
-                <span className="text-xs text-slate-400">User Authentication</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">OpenID Connect</span>
+                <span className="text-sm font-mono px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Step 1</span>
+                <span className="text-sm text-slate-400">User Authentication</span>
+                <span className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">OpenID Connect</span>
               </div>
               <TokenCard 
                 title="Okta ID Token" 
@@ -857,9 +857,9 @@ export default function SecurityFlowTab({
             {/* Step 2: ID-JAG Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded">Step 2</span>
-                <span className="text-xs text-slate-400">XAA Exchange (Identity Assertion)</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 8693</span>
+                <span className="text-sm font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded">Step 2</span>
+                <span className="text-sm text-slate-400">XAA Exchange (Identity Assertion)</span>
+                <span className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 8693</span>
               </div>
               <TokenCard 
                 title="ID-JAG Token" 
@@ -870,7 +870,7 @@ export default function SecurityFlowTab({
               >
                 {/* One-liner */}
                 <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
-                  <p className="text-xs text-amber-400">💡 "Okta vouches for the user to other systems"</p>
+                  <p className="text-sm text-amber-400">💡 "Okta vouches for the user to other systems"</p>
                 </div>
                 {/* ID-JAG Secure Flow - Inside TokenCard expansion */}
                 {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
@@ -931,9 +931,9 @@ export default function SecurityFlowTab({
             {/* Step 3: Auth Server Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono px-2 py-0.5 bg-green-500/20 text-green-400 rounded">Step 3</span>
-                <span className="text-xs text-slate-400">Access Grant</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 7523</span>
+                <span className="text-sm font-mono px-2 py-0.5 bg-green-500/20 text-green-400 rounded">Step 3</span>
+                <span className="text-sm text-slate-400">Access Grant</span>
+                <span className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 7523</span>
               </div>
               <TokenCard 
                 title="Auth Server Token" 
@@ -944,14 +944,14 @@ export default function SecurityFlowTab({
               >
                 {/* One-liner */}
                 <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
-                  <p className="text-xs text-amber-400">💡 "User gets permission to access a specific resource"</p>
+                  <p className="text-sm text-amber-400">💡 "User gets permission to access a specific resource"</p>
                 </div>
                 {/* JWT Bearer Grant Flow */}
                 {xaaInfo?.mcp_token && (
                   <div className="p-3 rounded-lg border border-green-500/30 bg-green-900/10 mb-2">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-green-400 text-xs">●</span>
-                      <span className="text-xs font-semibold text-green-400">JWT Bearer Grant Flow (RFC 7523)</span>
+                      <span className="text-green-400 text-sm">●</span>
+                      <span className="text-sm font-semibold text-green-400">JWT Bearer Grant Flow (RFC 7523)</span>
                     </div>
                     
                     <div className="space-y-0">
@@ -1047,11 +1047,11 @@ export default function SecurityFlowTab({
             {/* Step 4: Auth0 Vault Token */}
             <div className={`${!usedCalendar && !usedSalesforce && toolsCalled.length > 0 ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Step 4</span>
-                <span className="text-xs text-slate-400">Token Vault Access</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">Custom Token Exchange</span>
+                <span className="text-sm font-mono px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Step 4</span>
+                <span className="text-sm text-slate-400">Token Vault Access</span>
+                <span className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">Custom Token Exchange</span>
                 {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-600 text-slate-400 rounded">Skipped</span>
+                  <span className="text-xs px-1.5 py-0.5 bg-slate-600 text-slate-400 rounded">Skipped</span>
                 )}
               </div>
               <TokenCard 
@@ -1063,14 +1063,14 @@ export default function SecurityFlowTab({
               >
                 {/* One-liner */}
                 <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
-                  <p className="text-xs text-amber-400">💡 "User gets access to the secure token vault"</p>
+                  <p className="text-sm text-amber-400">💡 "User gets access to the secure token vault"</p>
                 </div>
                 {/* CTE Flow */}
                 {tokenVaultInfo?.vault_token && (
                   <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-900/10 mb-2">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-purple-400 text-xs">●</span>
-                      <span className="text-xs font-semibold text-purple-400">Custom Token Exchange Flow (Auth0)</span>
+                      <span className="text-purple-400 text-sm">●</span>
+                      <span className="text-sm font-semibold text-purple-400">Custom Token Exchange Flow (Auth0)</span>
                     </div>
                     
                     <div className="space-y-0">
@@ -1136,10 +1136,10 @@ export default function SecurityFlowTab({
             {/* Step 5: Federated Tokens - DYNAMIC based on tools called */}
             <div className={`${!usedCalendar && !usedSalesforce && toolsCalled.length > 0 ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">Step 5</span>
-                <span className="text-xs text-slate-400">Federated Connection Token (External Service)</span>
+                <span className="text-sm font-mono px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">Step 5</span>
+                <span className="text-sm text-slate-400">Federated Connection Token (External Service)</span>
                 {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-600 text-slate-400 rounded">Skipped</span>
+                  <span className="text-xs px-1.5 py-0.5 bg-slate-600 text-slate-400 rounded">Skipped</span>
                 )}
               </div>
               
@@ -1157,12 +1157,12 @@ export default function SecurityFlowTab({
                   >
                     {/* One-liner */}
                     <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
-                      <p className="text-xs text-amber-400">💡 "User retrieves their stored 3rd-party credentials"</p>
+                      <p className="text-sm text-amber-400">💡 "User retrieves their stored 3rd-party credentials"</p>
                     </div>
                     {/* Federated Token Flow */}
                     <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-900/10 mb-2">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-rose-400 text-xs">●</span>
+                        <span className="text-rose-400 text-sm">●</span>
                         <span className="text-xs font-semibold text-rose-400">Token Vault Federated Exchange</span>
                       </div>
                       
@@ -1305,12 +1305,12 @@ export default function SecurityFlowTab({
           </div>
         </div>
 
-        {/* RIGHT: Audit Trail - Business Focused */}
-        <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
+        {/* RIGHT: Audit Trail - Business Focused - 40% (2 cols) */}
+        <div className="col-span-2 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-white">🛡️ What Happened</h2>
-              <p className="text-xs text-slate-500">Secure actions on your behalf</p>
+              <p className="text-sm text-slate-500">Secure actions on your behalf</p>
             </div>
             <div className="flex items-center gap-2">
               {displayEvents.length > 0 && (
