@@ -805,6 +805,52 @@ export default function SecurityFlowTab({
                 <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
                   <p className="text-xs text-amber-400">💡 "User proves their identity to Okta"</p>
                 </div>
+                {/* OIDC Authentication Flow */}
+                {(session as any)?.idToken && (
+                  <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-900/10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-blue-400 text-xs">●</span>
+                      <span className="text-xs font-semibold text-blue-400">OpenID Connect Flow</span>
+                    </div>
+                    
+                    <div className="space-y-0">
+                      {/* Sub-step 1 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
+                          <div className="w-0.5 h-4 bg-blue-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[10px] font-medium text-white">User Authentication</p>
+                          <p className="text-[8px] text-slate-400">Enter credentials + MFA verification</p>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-step 2 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
+                          <div className="w-0.5 h-4 bg-blue-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[10px] font-medium text-white">Identity Validation</p>
+                          <p className="text-[8px] text-slate-400">Okta validates user identity and session</p>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-step 3 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-white">ID Token Issued</p>
+                          <p className="text-[8px] text-slate-400">JWT signed by Okta with user claims</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </TokenCard>
             </div>
 
@@ -900,6 +946,52 @@ export default function SecurityFlowTab({
                 <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
                   <p className="text-xs text-amber-400">💡 "User gets permission to access a specific resource"</p>
                 </div>
+                {/* JWT Bearer Grant Flow */}
+                {xaaInfo?.mcp_token && (
+                  <div className="p-3 rounded-lg border border-green-500/30 bg-green-900/10 mb-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-green-400 text-xs">●</span>
+                      <span className="text-xs font-semibold text-green-400">JWT Bearer Grant Flow (RFC 7523)</span>
+                    </div>
+                    
+                    <div className="space-y-0">
+                      {/* Sub-step 1 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-green-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
+                          <div className="w-0.5 h-4 bg-green-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[10px] font-medium text-white">ID-JAG → JWT Bearer Grant</p>
+                          <p className="text-[8px] text-slate-400">Submit ID-JAG as assertion to auth server</p>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-step 2 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-green-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
+                          <div className="w-0.5 h-4 bg-green-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[10px] font-medium text-white">Signature & Policy Validation</p>
+                          <p className="text-[8px] text-slate-400">Auth server validates ID-JAG signature and access policy</p>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-step 3 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-green-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-white">Access Token Issued</p>
+                          <p className="text-[8px] text-slate-400">Token with target audience and scopes</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Audience info */}
                 {xaaInfo?.mcp_token && (
                   <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
@@ -958,6 +1050,52 @@ export default function SecurityFlowTab({
                 <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
                   <p className="text-xs text-amber-400">💡 "User gets access to the secure token vault"</p>
                 </div>
+                {/* CTE Flow */}
+                {tokenVaultInfo?.vault_token && (
+                  <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-900/10 mb-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-purple-400 text-xs">●</span>
+                      <span className="text-xs font-semibold text-purple-400">Custom Token Exchange Flow (Auth0)</span>
+                    </div>
+                    
+                    <div className="space-y-0">
+                      {/* Sub-step 1 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-purple-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
+                          <div className="w-0.5 h-4 bg-purple-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[10px] font-medium text-white">Auth Server Token → Auth0 CTE</p>
+                          <p className="text-[8px] text-slate-400">Submit Okta token as subject_token</p>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-step 2 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-purple-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
+                          <div className="w-0.5 h-4 bg-purple-500/30"></div>
+                        </div>
+                        <div className="pb-1">
+                          <p className="text-[10px] font-medium text-white">Validate Okta Token</p>
+                          <p className="text-[8px] text-slate-400">Auth0 CTE Action validates signature and claims</p>
+                        </div>
+                      </div>
+                      
+                      {/* Sub-step 3 */}
+                      <div className="flex items-start gap-2">
+                        <div className="flex flex-col items-center">
+                          <div className="w-4 h-4 rounded-full bg-purple-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-white">Vault Access Token Issued</p>
+                          <p className="text-[8px] text-slate-400">Token with connection claim for vault lookup</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* CTE Info */}
                 {tokenVaultInfo?.vault_token && (
                   <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
@@ -1006,6 +1144,50 @@ export default function SecurityFlowTab({
                     <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
                       <p className="text-xs text-amber-400">💡 "User retrieves their stored 3rd-party credentials"</p>
                     </div>
+                    {/* Federated Token Flow */}
+                    <div className="p-3 rounded-lg border border-rose-500/30 bg-rose-900/10 mb-2">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-rose-400 text-xs">●</span>
+                        <span className="text-xs font-semibold text-rose-400">Token Vault Federated Exchange</span>
+                      </div>
+                      
+                      <div className="space-y-0">
+                        {/* Sub-step 1 */}
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
+                            <div className="w-0.5 h-4 bg-rose-500/30"></div>
+                          </div>
+                          <div className="pb-1">
+                            <p className="text-[10px] font-medium text-white">Vault Token → Token Vault API</p>
+                            <p className="text-[8px] text-slate-400">Request federated token with connection ID</p>
+                          </div>
+                        </div>
+                        
+                        {/* Sub-step 2 */}
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
+                            <div className="w-0.5 h-4 bg-rose-500/30"></div>
+                          </div>
+                          <div className="pb-1">
+                            <p className="text-[10px] font-medium text-white">Lookup Linked Account</p>
+                            <p className="text-[8px] text-slate-400">Find user's stored Google OAuth connection</p>
+                          </div>
+                        </div>
+                        
+                        {/* Sub-step 3 */}
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-medium text-white">3rd Party Token Retrieved</p>
+                            <p className="text-[8px] text-slate-400">Fresh Google access token returned</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     {/* Reference link */}
                     <div className="mt-2 pt-2 border-t border-rose-500/20">
                       <a href="https://auth0.com/docs/secure/call-apis-on-users-behalf/token-vault/access-token-exchange-with-token-vault" target="_blank" rel="noopener noreferrer" className="text-[9px] text-rose-400 hover:underline">
@@ -1030,6 +1212,50 @@ export default function SecurityFlowTab({
                     {/* One-liner */}
                     <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
                       <p className="text-xs text-amber-400">💡 "User retrieves their stored 3rd-party credentials"</p>
+                    </div>
+                    {/* Federated Token Flow */}
+                    <div className="p-3 rounded-lg border border-sky-500/30 bg-sky-900/10 mb-2">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sky-400 text-xs">●</span>
+                        <span className="text-xs font-semibold text-sky-400">Token Vault Federated Exchange</span>
+                      </div>
+                      
+                      <div className="space-y-0">
+                        {/* Sub-step 1 */}
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-sky-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
+                            <div className="w-0.5 h-4 bg-sky-500/30"></div>
+                          </div>
+                          <div className="pb-1">
+                            <p className="text-[10px] font-medium text-white">Vault Token → Token Vault API</p>
+                            <p className="text-[8px] text-slate-400">Request federated token with connection ID</p>
+                          </div>
+                        </div>
+                        
+                        {/* Sub-step 2 */}
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-sky-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
+                            <div className="w-0.5 h-4 bg-sky-500/30"></div>
+                          </div>
+                          <div className="pb-1">
+                            <p className="text-[10px] font-medium text-white">Lookup Linked Account</p>
+                            <p className="text-[8px] text-slate-400">Find user's stored Salesforce connection</p>
+                          </div>
+                        </div>
+                        
+                        {/* Sub-step 3 */}
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-4 h-4 rounded-full bg-sky-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-medium text-white">3rd Party Token Retrieved</p>
+                            <p className="text-[8px] text-slate-400">Fresh Salesforce access token returned</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     {/* Reference link */}
                     <div className="mt-2 pt-2 border-t border-sky-500/20">
@@ -1060,15 +1286,15 @@ export default function SecurityFlowTab({
               )}
             </div>
 
-            {/* Step 6: MCP Flow */}
+            {/* Tool Execution - Separate box with spacing (not a step) */}
             {toolsCalled.length > 0 && (
-              <div>
+              <div className="mt-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-mono px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Step 6</span>
-                  <span className="text-xs text-slate-400">Tool Execution</span>
+                  <span className="text-purple-400">⚡</span>
+                  <span className="text-xs font-medium text-slate-300">Tool Execution</span>
                   <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">MCP Protocol</span>
                 </div>
-                <div className="rounded-lg border border-purple-500/30 bg-purple-900/10 overflow-hidden">
+                <div className="rounded-lg border border-slate-600 bg-slate-800/50 overflow-hidden">
                   <div className="p-3">
                     {/* One-liner */}
                     <div className="mb-3 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
@@ -1076,9 +1302,8 @@ export default function SecurityFlowTab({
                     </div>
                     
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-purple-400">⚡</span>
-                      <span className="text-sm font-medium text-white">MCP Flow</span>
-                      <span className="text-green-400 text-xs ml-auto">✓ Executed</span>
+                      <span className="text-sm font-medium text-white">Execution Summary</span>
+                      <span className="text-green-400 text-xs ml-auto">✓ Complete</span>
                     </div>
                     
                     {/* MCP Servers - Show ALL that were used */}
@@ -1127,11 +1352,11 @@ export default function SecurityFlowTab({
                   </div>
                   
                   {/* Expandable details */}
-                  <details className="border-t border-purple-500/20">
-                    <summary className="px-3 py-2 text-xs text-purple-400 cursor-pointer hover:text-purple-300 bg-purple-900/20">
+                  <details className="border-t border-slate-700">
+                    <summary className="px-3 py-2 text-xs text-slate-400 cursor-pointer hover:text-slate-300 bg-slate-800/50">
                       View execution details
                     </summary>
-                    <div className="px-3 pb-3 bg-purple-900/20">
+                    <div className="px-3 pb-3 bg-slate-800/50">
                       <div className="text-[10px] text-slate-400 space-y-1">
                         <p>• Token validated by MCP server</p>
                         <p>• Scopes verified: mcp:read</p>
