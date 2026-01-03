@@ -791,7 +791,8 @@ export default function SecurityFlowTab({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Step 1</span>
-                <span className="text-xs text-slate-400">Okta Authentication</span>
+                <span className="text-xs text-slate-400">User Authentication</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">OpenID Connect</span>
               </div>
               <TokenCard 
                 title="Okta ID Token" 
@@ -799,14 +800,20 @@ export default function SecurityFlowTab({
                 color="border-blue-500/30 bg-blue-900/10" 
                 stepNumber={1}
                 icon="🔐"
-              />
+              >
+                {/* One-liner */}
+                <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                  <p className="text-xs text-amber-400">💡 "User proves their identity to Okta"</p>
+                </div>
+              </TokenCard>
             </div>
 
             {/* Step 2: ID-JAG Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded">Step 2</span>
-                <span className="text-xs text-slate-400">XAA Exchange (ID-JAG)</span>
+                <span className="text-xs text-slate-400">XAA Exchange (Identity Assertion)</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 8693</span>
               </div>
               <TokenCard 
                 title="ID-JAG Token" 
@@ -815,90 +822,172 @@ export default function SecurityFlowTab({
                 stepNumber={2}
                 icon="🔑"
               >
+                {/* One-liner */}
+                <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                  <p className="text-xs text-amber-400">💡 "Okta vouches for the user to other systems"</p>
+                </div>
                 {/* ID-JAG Secure Flow - Inside TokenCard expansion */}
                 {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
                   <div className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-cyan-400 text-xs">●</span>
-                      <span className="text-xs font-semibold text-cyan-400">ID-JAG Secure Flow</span>
+                      <span className="text-xs font-semibold text-cyan-400">Token Exchange Flow (RFC 8693)</span>
                     </div>
                     
                     <div className="space-y-0">
-                      {/* Step 1 */}
+                      {/* Sub-step 1 */}
                       <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
                           <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">1</div>
                           <div className="w-0.5 h-4 bg-cyan-500/30"></div>
                         </div>
                         <div className="pb-1">
-                          <p className="text-[10px] font-medium text-white">ID → ID-JAG</p>
-                          <p className="text-[8px] text-slate-400">Exchange user ID token for ID-JAG token</p>
+                          <p className="text-[10px] font-medium text-white">ID Token → Token Exchange</p>
+                          <p className="text-[8px] text-slate-400">Submit ID token with requested_token_type: id-jag</p>
                         </div>
                       </div>
                       
-                      {/* Step 2 */}
+                      {/* Sub-step 2 */}
                       <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
                           <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">2</div>
                           <div className="w-0.5 h-4 bg-cyan-500/30"></div>
                         </div>
                         <div className="pb-1">
-                          <p className="text-[10px] font-medium text-white">Verify ID-JAG</p>
-                          <p className="text-[8px] text-slate-400">Validate ID-JAG token (audit trail)</p>
+                          <p className="text-[10px] font-medium text-white">Policy Evaluation</p>
+                          <p className="text-[8px] text-slate-400">Okta validates user, app, and cross-app access policy</p>
                         </div>
                       </div>
                       
-                      {/* Step 3 */}
+                      {/* Sub-step 3 */}
                       <div className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
                           <div className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[8px] flex items-center justify-center font-bold">3</div>
                         </div>
                         <div>
-                          <p className="text-[10px] font-medium text-white">ID-JAG → MCP Token</p>
-                          <p className="text-[8px] text-slate-400">Exchange ID-JAG for authorization server token</p>
+                          <p className="text-[10px] font-medium text-white">ID-JAG Issued</p>
+                          <p className="text-[8px] text-slate-400">Identity assertion JWT signed by Okta</p>
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Reference link */}
+                    <div className="mt-2 pt-2 border-t border-cyan-500/20">
+                      <a href="https://datatracker.ietf.org/doc/draft-parecki-oauth-identity-assertion-authz-grant/" target="_blank" rel="noopener noreferrer" className="text-[9px] text-cyan-400 hover:underline">
+                        → Identity Assertion Authorization Grant (Aaron Parecki)
+                      </a>
                     </div>
                   </div>
                 )}
               </TokenCard>
             </div>
 
-            {/* Step 3: MCP Token */}
+            {/* Step 3: Auth Server Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono px-2 py-0.5 bg-green-500/20 text-green-400 rounded">Step 3</span>
-                <span className="text-xs text-slate-400">Auth Server Token</span>
+                <span className="text-xs text-slate-400">Access Grant</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 7523</span>
               </div>
               <TokenCard 
-                title="MCP Token" 
+                title="Auth Server Token" 
                 token={xaaInfo?.mcp_token} 
                 color="border-green-500/30 bg-green-900/10" 
                 stepNumber={3}
                 icon="🎫"
-              />
+              >
+                {/* One-liner */}
+                <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                  <p className="text-xs text-amber-400">💡 "User gets permission to access a specific resource"</p>
+                </div>
+                {/* Audience info */}
+                {xaaInfo?.mcp_token && (
+                  <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className="text-slate-500">Audience:</span>
+                      <span className="text-green-400 font-mono">
+                        {usedCalendar ? 'https://google.com' : usedSalesforce ? 'https://salesforce.com' : 'apex-wealth-mcp'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] mt-1">
+                      <span className="text-slate-500">Grant:</span>
+                      <span className="text-slate-300">JWT Bearer (urn:ietf:params:oauth:grant-type:jwt-bearer)</span>
+                    </div>
+                  </div>
+                )}
+              </TokenCard>
+              
+              {/* Divergence Point */}
+              {xaaInfo?.mcp_token && (
+                <div className="mt-2 p-2 rounded-lg bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/30">
+                  <div className="flex items-center gap-2">
+                    <span className="text-purple-400">⚡</span>
+                    <span className="text-xs font-medium text-purple-300">Flow Divergence Point</span>
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-400">
+                    {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 ? (
+                      <span className="text-green-400">→ MCP Only: Steps 4 & 5 skipped. Token goes directly to MCP server.</span>
+                    ) : (usedCalendar || usedSalesforce) ? (
+                      <span className="text-purple-300">→ External Services: Continue to Token Vault (Steps 4 & 5)</span>
+                    ) : (
+                      <span>→ MCP: Direct to server | External: Continue to Token Vault</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Step 4: Auth0 Vault Token */}
-            <div>
+            <div className={`${!usedCalendar && !usedSalesforce && toolsCalled.length > 0 ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Step 4</span>
-                <span className="text-xs text-slate-400">Token Vault Exchange</span>
+                <span className="text-xs text-slate-400">Token Vault Access</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">Custom Token Exchange</span>
+                {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-600 text-slate-400 rounded">Skipped</span>
+                )}
               </div>
               <TokenCard 
-                title="Auth0 Vault Token" 
+                title="Vault Access Token (CTE)" 
                 token={tokenVaultInfo?.vault_token} 
                 color="border-purple-500/30 bg-purple-900/10" 
                 stepNumber={4}
                 icon="🏦"
-              />
+              >
+                {/* One-liner */}
+                <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                  <p className="text-xs text-amber-400">💡 "User gets access to the secure token vault"</p>
+                </div>
+                {/* CTE Info */}
+                {tokenVaultInfo?.vault_token && (
+                  <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className="text-slate-500">Audience:</span>
+                      <span className="text-purple-400 font-mono">https://vault.dell.auth101.dev</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] mt-1">
+                      <span className="text-slate-500">Scope:</span>
+                      <span className="text-slate-300">read:vault</span>
+                    </div>
+                  </div>
+                )}
+                {/* Reference link */}
+                <div className="mt-2 pt-2 border-t border-purple-500/20">
+                  <a href="https://auth0.com/docs/authenticate/custom-token-exchange" target="_blank" rel="noopener noreferrer" className="text-[9px] text-purple-400 hover:underline">
+                    → Auth0 Custom Token Exchange Docs
+                  </a>
+                </div>
+              </TokenCard>
             </div>
 
             {/* Step 5: Federated Tokens - DYNAMIC based on tools called */}
-            <div>
+            <div className={`${!usedCalendar && !usedSalesforce && toolsCalled.length > 0 ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-mono px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">Step 5</span>
-                <span className="text-xs text-slate-400">Federated Token</span>
+                <span className="text-xs text-slate-400">Federated Connection Token (External Service)</span>
+                {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-600 text-slate-400 rounded">Skipped</span>
+                )}
               </div>
               
               {/* Show Google Calendar Token if calendar tools were used */}
@@ -912,7 +1001,18 @@ export default function SecurityFlowTab({
                     icon="📅"
                     wasUsed={true}
                     isOpaque={true}
-                  />
+                  >
+                    {/* One-liner */}
+                    <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                      <p className="text-xs text-amber-400">💡 "User retrieves their stored 3rd-party credentials"</p>
+                    </div>
+                    {/* Reference link */}
+                    <div className="mt-2 pt-2 border-t border-rose-500/20">
+                      <a href="https://auth0.com/docs/secure/call-apis-on-users-behalf/token-vault/access-token-exchange-with-token-vault" target="_blank" rel="noopener noreferrer" className="text-[9px] text-rose-400 hover:underline">
+                        → Auth0 Token Vault Federated Exchange
+                      </a>
+                    </div>
+                  </TokenCard>
                 </div>
               )}
               
@@ -926,18 +1026,29 @@ export default function SecurityFlowTab({
                     stepNumber="5"
                     icon="☁️"
                     wasUsed={true}
-                  />
+                  >
+                    {/* One-liner */}
+                    <div className="mb-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                      <p className="text-xs text-amber-400">💡 "User retrieves their stored 3rd-party credentials"</p>
+                    </div>
+                    {/* Reference link */}
+                    <div className="mt-2 pt-2 border-t border-sky-500/20">
+                      <a href="https://auth0.com/docs/secure/call-apis-on-users-behalf/token-vault/access-token-exchange-with-token-vault" target="_blank" rel="noopener noreferrer" className="text-[9px] text-sky-400 hover:underline">
+                        → Auth0 Token Vault Federated Exchange
+                      </a>
+                    </div>
+                  </TokenCard>
                 </div>
               )}
               
               {/* Show Internal MCP message if only internal tools were used */}
               {!usedCalendar && !usedSalesforce && toolsCalled.length > 0 && (
-                <div className="p-3 rounded-lg border border-green-500/30 bg-green-900/10">
+                <div className="p-3 rounded-lg border border-slate-600 bg-slate-800/30">
                   <div className="flex items-center gap-2">
                     <span>🔧</span>
-                    <span className="text-sm text-green-400 font-medium">Internal MCP Tools</span>
+                    <span className="text-sm text-slate-400 font-medium">Internal MCP Only</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">No federated token needed - uses Okta XAA flow only</p>
+                  <p className="text-xs text-slate-500 mt-1">No federated token needed - Auth Server Token (Step 3) used directly with MCP server via Okta XAA flow.</p>
                 </div>
               )}
               
@@ -955,9 +1066,15 @@ export default function SecurityFlowTab({
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-mono px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Step 6</span>
                   <span className="text-xs text-slate-400">Tool Execution</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">MCP Protocol</span>
                 </div>
                 <div className="rounded-lg border border-purple-500/30 bg-purple-900/10 overflow-hidden">
                   <div className="p-3">
+                    {/* One-liner */}
+                    <div className="mb-3 px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                      <p className="text-xs text-amber-400">💡 "AI executes tools using all the right credentials"</p>
+                    </div>
+                    
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-purple-400">⚡</span>
                       <span className="text-sm font-medium text-white">MCP Flow</span>
