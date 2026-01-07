@@ -2,6 +2,8 @@
 Claude AI Service
 Handles conversation with Claude API including tool calling.
 Routes tools to appropriate security flow (Okta XAA vs Auth0 Token Vault).
+
+Version: 2.0 - Added hallucination detection (2026-01-07)
 """
 
 import logging
@@ -18,6 +20,23 @@ CALENDAR_TOOLS = ["list_calendar_events", "get_calendar_event", "create_calendar
 SALESFORCE_TOOLS = ["search_salesforce_contacts", "create_salesforce_contact", "get_contact_opportunities", 
                     "get_sales_pipeline", "get_high_value_accounts", "create_salesforce_task", 
                     "create_salesforce_note", "get_pipeline_value", "update_opportunity_stage"]
+
+# Hallucination detection: map action keywords to expected tools
+ACTION_TOOL_MAP = {
+    "cancelled": ["cancel_calendar_event"],
+    "canceled": ["cancel_calendar_event"],
+    "meeting has been cancelled": ["cancel_calendar_event"],
+    "successfully cancelled": ["cancel_calendar_event"],
+    "scheduled": ["create_calendar_event"],
+    "meeting scheduled": ["create_calendar_event"],
+    "created a new contact": ["create_salesforce_contact"],
+    "created a task": ["create_salesforce_task"],
+    "added a note": ["create_salesforce_note"],
+    "updated the opportunity": ["update_opportunity_stage"],
+    "updated the stage": ["update_opportunity_stage"],
+    "payment processed": ["process_payment"],
+    "transfer complete": ["process_payment"],
+}
 
 
 class ClaudeService:
@@ -73,6 +92,9 @@ These tools access Google Calendar via Auth0 Token Vault:
 - Proactively offer to schedule follow-up meetings after client discussions
 - Use the client's name naturally in conversation
 
+## CRITICAL TOOL USAGE RULE
+You MUST call the actual tool for EVERY action request. Never assume an action succeeded based on conversation history. Never reuse event IDs or data from previous messages. Always make a fresh tool call for each action.
+
 When security controls block an action, explain why clearly and suggest alternatives."""
     
     def _convert_tools_to_claude(self, mcp_tools: List[Dict], calendar_tools: List[Dict], salesforce_tools: List[Dict] = None) -> List[Dict]:
@@ -105,6 +127,30 @@ When security controls block an action, explain why clearly and suggest alternat
                 })
         
         return claude_tools
+    
+    def _detect_hallucination(self, response_text: str, tools_called: List[str]) -> Optional[str]:
+        """
+        Detect if Claude claimed to perform an action without calling the tool.
+        
+        Returns warning message if hallucination detected, None otherwise.
+        """
+        response_lower = response_text.lower()
+        
+        for action_phrase, expected_tools in ACTION_TOOL_MAP.items():
+            if action_phrase in response_lower:
+                # Check if any expected tool was actually called
+                tool_was_called = any(tool in tools_called for tool in expected_tools)
+                if not tool_was_called:
+                    logger.warning(
+                        f"[Claude] HALLUCINATION DETECTED: Response contains '{action_phrase}' "
+                        f"but tools {expected_tools} were not called. Tools called: {tools_called}"
+                    )
+                    return (
+                        "\n\n⚠️ **Warning:** The action described above may not have completed. "
+                        "Please verify in the source system (Google Calendar, Salesforce, etc.)."
+                    )
+        
+        return None
     
     async def process_message(
         self,
@@ -265,6 +311,14 @@ When security controls block an action, explain why clearly and suggest alternat
                 if hasattr(content_block, "text"):
                     final_content += content_block.text
             
+            # ================================================================
+            # HALLUCINATION DETECTION
+            # Check if Claude claimed to do something without calling the tool
+            # ================================================================
+            hallucination_warning = self._detect_hallucination(final_content, tools_called)
+            if hallucination_warning:
+                final_content += hallucination_warning
+            
             return {
                 "content": final_content,
                 "agent_type": "Buffett (Wealth Advisor)",
@@ -273,8 +327,9 @@ When security controls block an action, explain why clearly and suggest alternat
                     "xaa_tools": xaa_tools_called,
                     "vault_tools": vault_tools_called,
                     "mcp_token_used": bool(mcp_token and xaa_tools_called),
-                    "google_token_used": bool(google_token and vault_tools_called)
-                } if tools_called else None
+                    "google_token_used": bool(google_token and vault_tools_called),
+                    "hallucination_detected": bool(hallucination_warning)
+                } if tools_called or hallucination_warning else None
             }
             
         except anthropic.APIError as e:
