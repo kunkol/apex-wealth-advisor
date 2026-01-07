@@ -458,10 +458,12 @@ async def get_pipeline_value(
     Demo Prompt 2.8: "What's the total pipeline value?"
     """
     try:
+        # Query open opportunities grouped by IsClosed to get aggregate values
         soql = """
-            SELECT SUM(Amount) total, COUNT(Id) count
+            SELECT COUNT(Id) num, SUM(Amount) total
             FROM Opportunity
             WHERE IsClosed = false
+            GROUP BY IsClosed
         """
         
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -476,11 +478,12 @@ async def get_pipeline_value(
                 if records:
                     return {
                         "success": True,
-                        "total_value": records[0].get("total", 0),
-                        "opportunity_count": records[0].get("count", 0)
+                        "total_value": records[0].get("total", 0) or 0,
+                        "opportunity_count": records[0].get("num", 0) or 0
                     }
                 return {"success": True, "total_value": 0, "opportunity_count": 0}
             else:
+                logger.error(f"[Salesforce] Pipeline value query failed: {response.status_code} - {response.text}")
                 return {"success": False, "error": f"Query failed: {response.status_code}"}
                 
     except Exception as e:
@@ -545,15 +548,11 @@ async def update_opportunity_stage(
         return {"success": False, "error": str(e)}
 
 
-# Tool definitions for Claude - NATURAL PROMPTING VERSION (2026-01-07)
-# Key changes:
-# - Added CRM/sales-specific language to distinguish from internal portfolio system
-# - Added "Use for X questions" hints for Claude routing
-# - Added "NOT for portfolio data" boundaries
+# Tool definitions for Claude
 SALESFORCE_TOOLS = [
     {
         "name": "search_salesforce_contacts",
-        "description": "Search CRM for contact records - business relationships, job titles, company associations, and communication history. Use for CRM lookups, sales relationship questions, and finding contact info for sales calls. NOT for portfolio or investment data.",
+        "description": "Search for contacts in Salesforce by name. Returns contact details including email, phone, title, and associated account.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -567,7 +566,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_contact_opportunities",
-        "description": "Get sales opportunities linked to a contact - deal names, amounts, stages, close dates, and win probability. Use for sales pipeline questions, deal status, and opportunity tracking.",
+        "description": "Get all opportunities associated with a contact's account. Shows opportunity name, amount, stage, and close date.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -581,7 +580,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_sales_pipeline",
-        "description": "Get sales pipeline summary - opportunities grouped by stage with counts and dollar values. Use for sales forecasting, pipeline health, and revenue projection questions.",
+        "description": "Get the current sales pipeline summary grouped by stage. Shows count and total value for each stage.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -594,7 +593,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_high_value_accounts",
-        "description": "Find high-value sales opportunities above a dollar threshold. Use for targeting big deals, high-value prospect identification, and large opportunity questions.",
+        "description": "Get opportunities above a certain value threshold. Default is $500,000.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -607,7 +606,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "create_salesforce_task",
-        "description": "Create a follow-up task in CRM with subject, due date, and priority. Use for CRM task creation, follow-up scheduling, and activity tracking in Salesforce.",
+        "description": "Create a follow-up task for a contact in Salesforce.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -638,7 +637,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "create_salesforce_note",
-        "description": "Add a note to an account record in CRM. Use for documenting client interactions, meeting notes, and activity logging in Salesforce.",
+        "description": "Add a note to an account in Salesforce.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -660,7 +659,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_pipeline_value",
-        "description": "Get total dollar value and count of all open opportunities in the sales pipeline. Use for pipeline value questions, sales forecast totals, and revenue projection.",
+        "description": "Get the total value and count of all open opportunities in the pipeline.",
         "input_schema": {
             "type": "object",
             "properties": {}
@@ -668,7 +667,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "update_opportunity_stage",
-        "description": "Update the stage of a sales opportunity (e.g., Negotiation, Closed Won, Closed Lost). Use for deal stage updates, opportunity progression, and sales status changes.",
+        "description": "Update the stage of an opportunity. Common stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Id. Decision Makers, Perception Analysis, Proposal/Price Quote, Negotiation/Review, Closed Won, Closed Lost.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -686,7 +685,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "create_salesforce_contact",
-        "description": "Create a new contact record in CRM with name, email, phone, and company association. Use for adding new prospects, contacts, and leads to Salesforce.",
+        "description": "Create a new contact in Salesforce. Can optionally associate with an existing account or create a new one.",
         "input_schema": {
             "type": "object",
             "properties": {

@@ -1,17 +1,11 @@
 /**
  * PromptLibrary.tsx
- * TESTED & ALIGNED VERSION - January 7, 2026
+ * Apex Wealth Advisor - Demo Prompt Library
  * 
- * This PromptLibrary contains EXACTLY the prompts that were tested and verified
- * in the comprehensive 24-test validation (Phases 1-6).
- * 
- * All prompts use natural language - no explicit tool routing needed.
- * The agent figures out which tool to use based on context keywords:
+ * Prompts use natural language - the agent automatically routes to the correct tool:
  * - Financial keywords (portfolio, AUM, holdings) → Internal MCP
  * - CRM keywords (opportunities, pipeline, CRM, contact details) → Salesforce
  * - Scheduling keywords (schedule, meeting, calendar) → Google Calendar
- * 
- * Test Results: 24/24 PASSED (100%)
  */
 
 'use client';
@@ -57,7 +51,7 @@ interface PromptLibraryProps {
 }
 
 // =============================================================================
-// TESTED & VERIFIED PROMPTS - Aligned with Phase 1-6 Testing (Jan 7, 2026)
+// DEMO PROMPTS - Natural Language Routing
 // =============================================================================
 
 const CATEGORIES: Category[] = [
@@ -81,27 +75,24 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p1-1', 
             text: 'Show me Marcus Thompson portfolio value and YTD performance.', 
-            description: '✓ Phase 1.1 - Portfolio value query', 
+            description: 'Portfolio value and performance', 
             action: 'READ',
-            phase: 'Phase 1',
             tested: true
           },
           // Phase 1 - Test 1.2
           { 
             id: 'p1-2', 
             text: 'Show me all my clients with their AUM and risk profiles.', 
-            description: '✓ Phase 1.2 - Client roster with AUM', 
+            description: 'Client roster with AUM', 
             action: 'READ',
-            phase: 'Phase 1',
             tested: true
           },
           // Phase 2 - Test 2.2
           { 
             id: 'p2-2', 
             text: 'Tell me about James Chen\'s investment account.', 
-            description: '✓ Phase 2.2 - Financial context routes to MCP', 
+            description: 'Investment account details', 
             action: 'READ',
-            phase: 'Phase 2',
             tested: true
           },
         ]
@@ -116,9 +107,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p2-3', 
             text: 'What is Priya Patel\'s portfolio and what opportunities do we have with her?', 
-            description: '✓ Phase 2.3 - Portfolio + Opportunities (2 systems)', 
+            description: 'Portfolio + Opportunities lookup', 
             action: 'READ',
-            phase: 'Phase 2',
             note: 'Calls both get_client (MCP) and get_contact_opportunities (Salesforce)',
             tested: true
           },
@@ -147,18 +137,16 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p1-3', 
             text: 'Look up Marcus Thompson in CRM for a sales call.', 
-            description: '✓ Phase 1.3 - CRM contact lookup', 
+            description: 'CRM contact lookup', 
             action: 'READ',
-            phase: 'Phase 1',
             tested: true
           },
           // Phase 2 - Test 2.1
           { 
             id: 'p2-1', 
             text: 'Look up Elena Rodriguez contact details.', 
-            description: '✓ Phase 2.1 - Ambiguous "contact details" routes to CRM', 
+            description: 'Contact details lookup', 
             action: 'READ',
-            phase: 'Phase 2',
             tested: true
           },
         ]
@@ -172,9 +160,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p1-4', 
             text: 'What opportunities do we have with Elena Rodriguez?', 
-            description: '✓ Phase 1.4 - Sales opportunities query', 
+            description: 'Sales opportunities', 
             action: 'READ',
-            phase: 'Phase 1',
             tested: true
           },
         ]
@@ -188,27 +175,24 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p1-5', 
             text: 'Show me the current sales pipeline summary by stage.', 
-            description: '✓ Phase 1.5 - Pipeline by stage', 
+            description: 'Pipeline summary by stage', 
             action: 'READ',
-            phase: 'Phase 1',
             tested: true
           },
           // Phase 5 - Test 5.3
           { 
             id: 'p5-3', 
             text: 'What is the total value of our open sales pipeline?', 
-            description: '✓ Phase 5.3 - Total pipeline value', 
+            description: 'Total pipeline value', 
             action: 'READ',
-            phase: 'Phase 5',
             tested: true
           },
           // Phase 5 - Test 5.4
           { 
             id: 'p5-4', 
             text: 'Show me all opportunities worth more than $100,000.', 
-            description: '✓ Phase 5.4 - High-value opportunities', 
+            description: 'High-value opportunities', 
             action: 'READ',
-            phase: 'Phase 5',
             tested: true
           },
         ]
@@ -222,27 +206,24 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p3-2', 
             text: 'Create a follow-up task for Elena Rodriguez: "Retirement Planning Call" due January 15th, 2026. Priority: High.', 
-            description: '✓ Phase 3.2 - Create CRM task', 
+            description: 'Create follow-up task', 
             action: 'CREATE',
-            phase: 'Phase 3',
             tested: true
           },
           // Phase 5 - Test 5.1
           { 
             id: 'p5-1', 
             text: 'Create a task for Marcus Thompson: "Review Q1 Investment Strategy" due January 18th, 2026. Priority: Normal. Notes: Prepare rebalancing recommendations based on market conditions.', 
-            description: '✓ Phase 5.1 - Create task with notes', 
+            description: 'Create task with notes', 
             action: 'CREATE',
-            phase: 'Phase 5',
             tested: true
           },
           // Phase 5 - Test 5.2
           { 
             id: 'p5-2', 
             text: 'Add a note to the Rodriguez Retirement Fund account titled "Retirement Timeline Discussion": Client confirmed target retirement date of 2028. Wants to shift to more conservative allocation over next 18 months. Discussed Social Security timing options.', 
-            description: '✓ Phase 5.2 - Add account note', 
+            description: 'Add account note', 
             action: 'CREATE',
-            phase: 'Phase 5',
             tested: true
           },
         ]
@@ -257,9 +238,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p3-3', 
             text: 'Update the Portfolio Rebalancing - Thompson opportunity to Closed Won.', 
-            description: '✓ Phase 3.3 - Mark opportunity Closed Won', 
+            description: 'Update opportunity to Closed Won', 
             action: 'UPDATE',
-            phase: 'Phase 3',
             tested: true
           },
         ]
@@ -286,9 +266,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p1-6', 
             text: 'What meetings do I have this week?', 
-            description: '✓ Phase 1.6 - List weekly meetings', 
+            description: 'View weekly calendar', 
             action: 'READ',
-            phase: 'Phase 1',
             tested: true
           },
         ]
@@ -303,9 +282,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p3-1', 
             text: 'Schedule a portfolio review with Marcus Thompson (marcus@thompsonfamilytrust.com) for January 20th, 2026 at 2:00 PM PST.', 
-            description: '✓ Phase 3.1 - Schedule meeting', 
+            description: 'Schedule client meeting', 
             action: 'CREATE',
-            phase: 'Phase 3',
             tested: true
           },
         ]
@@ -333,9 +311,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p3-4', 
             text: 'Process a $5,000 transfer from Marcus Thompson brokerage to his checking account.', 
-            description: '✓ Phase 3.4 - Auto-approved transfer', 
+            description: 'Small transfer (auto-approved)', 
             action: 'CREATE',
-            phase: 'Phase 3',
             expected: 'Transaction approved immediately',
             tested: true
           },
@@ -351,9 +328,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p3-5', 
             text: 'Process a $15,000 transfer from Elena Rodriguez IRA to her savings account.', 
-            description: '✓ Phase 3.5 - CIBA step-up triggered', 
+            description: 'Large transfer (step-up auth)', 
             action: 'CREATE',
-            phase: 'Phase 3',
             expected: 'Step-up auth required - push notification sent',
             tested: true
           },
@@ -381,9 +357,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p4-1', 
             text: 'I have a meeting with James Chen next week. Get his CRM contact details and pull his portfolio summary.', 
-            description: '✓ Phase 4.1 - CRM + Portfolio (2 tools)', 
+            description: 'CRM + Portfolio lookup', 
             action: 'READ',
-            phase: 'Phase 4',
             note: 'Calls search_salesforce_contacts + get_client',
             tested: true
           },
@@ -399,9 +374,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p4-2', 
             text: 'Prepare for a client review with Elena Rodriguez. Get her CRM contact and opportunities, pull her portfolio, and schedule a meeting with her (elena.rodriguez@email.com) for January 25th, 2026 at 10:00 AM PST.', 
-            description: '✓ Phase 4.2 - Triple system (5 tools)', 
+            description: 'Full client review prep', 
             action: 'CREATE',
-            phase: 'Phase 4',
             note: 'Calls: search_salesforce_contacts, get_contact_opportunities, get_client, get_portfolio, create_calendar_event',
             tested: true
           },
@@ -417,27 +391,24 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p6-1', 
             text: 'Update the Portfolio Rebalancing - Thompson opportunity to Negotiation/Review stage.', 
-            description: '✓ Phase 6.1 - Reset Thompson opportunity', 
+            description: 'Reset Thompson opportunity', 
             action: 'UPDATE',
-            phase: 'Phase 6',
             tested: true
           },
           // Phase 6 - Test 6.2
           { 
             id: 'p6-2', 
             text: 'Update the Retirement Rollover - Rodriguez opportunity to Proposal/Price Quote stage.', 
-            description: '✓ Phase 6.2 - Reset Rodriguez opportunity', 
+            description: 'Reset Rodriguez opportunity', 
             action: 'UPDATE',
-            phase: 'Phase 6',
             tested: true
           },
           // Phase 6 - Test 6.3
           { 
             id: 'p6-3', 
             text: 'Cancel my meeting with Elena Rodriguez on January 25th, 2026.', 
-            description: '✓ Phase 6.3 - Cancel Elena meeting', 
+            description: 'Cancel Elena meeting', 
             action: 'CANCEL',
-            phase: 'Phase 6',
             note: 'Adjust date to match when meeting was created',
             tested: true
           },
@@ -445,9 +416,8 @@ const CATEGORIES: Category[] = [
           { 
             id: 'p6-4', 
             text: 'Cancel my portfolio review meeting with Marcus Thompson on January 20th, 2026.', 
-            description: '✓ Phase 6.4 - Cancel Marcus meeting', 
+            description: 'Cancel Marcus meeting', 
             action: 'CANCEL',
-            phase: 'Phase 6',
             note: 'Adjust date to match when meeting was created',
             tested: true
           },
@@ -552,10 +522,9 @@ export default function PromptLibrary({
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               📚 Prompt Library
-              <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">24/24 Tested</span>
             </h2>
             <p className="text-sm text-slate-400 mt-1">
-              {testedPrompts}/{totalPrompts} prompts verified • Natural language routing • Phase 1-6 aligned
+              Click any prompt to run • Natural language routing
             </p>
           </div>
           <button
@@ -589,7 +558,7 @@ export default function PromptLibrary({
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-white">{category.name}</span>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
-                          {testedCount}✓ / {promptCount}
+                          {promptCount} prompts
                         </span>
                       </div>
                       <span className={`text-xs ${getCategoryTextColor(category.color)}`}>
@@ -625,7 +594,7 @@ export default function PromptLibrary({
                               <span>{subSection.icon}</span>
                               <span className="text-sm font-medium text-slate-200">{subSection.name}</span>
                               <span className="text-xs text-slate-500">
-                                ({subTestedCount > 0 ? `${subTestedCount}✓/` : ''}{subSection.prompts.length})
+                                ({subSection.prompts.length})
                               </span>
                             </div>
                             <svg 
@@ -715,7 +684,7 @@ export default function PromptLibrary({
         {/* Footer */}
         <div className="px-6 py-3 border-t border-slate-800 bg-slate-950">
           <p className="text-xs text-slate-500 text-center">
-            ✓ All 24 prompts tested Jan 7, 2026 • Natural language routing • Use "Demo Reset" section to cleanup after testing
+            ✓ Use "Demo Reset" section to cleanup after demos
           </p>
         </div>
       </div>
