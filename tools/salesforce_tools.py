@@ -545,11 +545,15 @@ async def update_opportunity_stage(
         return {"success": False, "error": str(e)}
 
 
-# Tool definitions for Claude
+# Tool definitions for Claude - NATURAL PROMPTING VERSION (2026-01-07)
+# Key changes:
+# - Added CRM/sales-specific language to distinguish from internal portfolio system
+# - Added "Use for X questions" hints for Claude routing
+# - Added "NOT for portfolio data" boundaries
 SALESFORCE_TOOLS = [
     {
         "name": "search_salesforce_contacts",
-        "description": "Search for contacts in Salesforce by name. Returns contact details including email, phone, title, and associated account.",
+        "description": "Search CRM for contact records - business relationships, job titles, company associations, and communication history. Use for CRM lookups, sales relationship questions, and finding contact info for sales calls. NOT for portfolio or investment data.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -563,7 +567,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_contact_opportunities",
-        "description": "Get all opportunities associated with a contact's account. Shows opportunity name, amount, stage, and close date.",
+        "description": "Get sales opportunities linked to a contact - deal names, amounts, stages, close dates, and win probability. Use for sales pipeline questions, deal status, and opportunity tracking.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -577,7 +581,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_sales_pipeline",
-        "description": "Get the current sales pipeline summary grouped by stage. Shows count and total value for each stage.",
+        "description": "Get sales pipeline summary - opportunities grouped by stage with counts and dollar values. Use for sales forecasting, pipeline health, and revenue projection questions.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -590,7 +594,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_high_value_accounts",
-        "description": "Get opportunities above a certain value threshold. Default is $500,000.",
+        "description": "Find high-value sales opportunities above a dollar threshold. Use for targeting big deals, high-value prospect identification, and large opportunity questions.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -603,7 +607,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "create_salesforce_task",
-        "description": "Create a follow-up task for a contact in Salesforce.",
+        "description": "Create a follow-up task in CRM with subject, due date, and priority. Use for CRM task creation, follow-up scheduling, and activity tracking in Salesforce.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -634,7 +638,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "create_salesforce_note",
-        "description": "Add a note to an account in Salesforce.",
+        "description": "Add a note to an account record in CRM. Use for documenting client interactions, meeting notes, and activity logging in Salesforce.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -656,7 +660,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "get_pipeline_value",
-        "description": "Get the total value and count of all open opportunities in the pipeline.",
+        "description": "Get total dollar value and count of all open opportunities in the sales pipeline. Use for pipeline value questions, sales forecast totals, and revenue projection.",
         "input_schema": {
             "type": "object",
             "properties": {}
@@ -664,7 +668,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "update_opportunity_stage",
-        "description": "Update the stage of an opportunity. Common stages: Prospecting, Qualification, Needs Analysis, Value Proposition, Id. Decision Makers, Perception Analysis, Proposal/Price Quote, Negotiation/Review, Closed Won, Closed Lost.",
+        "description": "Update the stage of a sales opportunity (e.g., Negotiation, Closed Won, Closed Lost). Use for deal stage updates, opportunity progression, and sales status changes.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -682,7 +686,7 @@ SALESFORCE_TOOLS = [
     },
     {
         "name": "create_salesforce_contact",
-        "description": "Create a new contact in Salesforce. Can optionally associate with an existing account or create a new one.",
+        "description": "Create a new contact record in CRM with name, email, phone, and company association. Use for adding new prospects, contacts, and leads to Salesforce.",
         "input_schema": {
             "type": "object",
             "properties": {

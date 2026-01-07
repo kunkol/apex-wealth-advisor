@@ -2,6 +2,11 @@
 Apex Wealth Advisor - MCP Server
 Provides tools for wealth management operations
 Based on Indranil's employees_mcp.py pattern
+
+Version: 2.0 - Natural Prompting Support (2026-01-07)
+  - Updated tool descriptions with financial-specific language
+  - Added "Use for X questions" hints for Claude routing
+  - Added "NOT for CRM" boundaries to prevent wrong routing
 """
 
 import logging
@@ -28,17 +33,24 @@ class WealthMCP:
         logger.info("[MCP] WealthMCP initialized")
     
     def _define_tools(self) -> List[Dict[str, Any]]:
-        """Define available MCP tools"""
+        """
+        Define available MCP tools with NATURAL PROMPTING descriptions.
+        
+        Key principles:
+        1. Each description ends with "Use for X questions" to help Claude route
+        2. Clear boundary statements distinguish from Salesforce (CRM)
+        3. Financial-specific keywords: portfolio, AUM, holdings, risk profile
+        """
         return [
             {
                 "name": "get_client",
-                "description": "Get detailed information about a client by name or ID. Returns portfolio value, account type, and status.",
+                "description": "Get client FINANCIAL profile from internal portfolio system - portfolio value, AUM, investment account type, risk score, YTD performance, and advisor assignment. Use for portfolio value, investment status, and financial profile questions. NOT for CRM contact info or sales opportunities.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "client_identifier": {
                             "type": "string",
-                            "description": "Client name (e.g., 'Alice Johnson') or client ID (e.g., 'CLT001')"
+                            "description": "Client name (e.g., 'Marcus Thompson') or client ID (e.g., 'CLT001')"
                         }
                     },
                     "required": ["client_identifier"]
@@ -46,7 +58,7 @@ class WealthMCP:
             },
             {
                 "name": "list_clients",
-                "description": "List all clients with their basic information. Can filter by status.",
+                "description": "List all investment clients with portfolio values, total AUM (Assets Under Management), risk profiles, and account types from internal system. Use for managed accounts overview, total AUM questions, and client roster requests.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -60,7 +72,7 @@ class WealthMCP:
             },
             {
                 "name": "get_portfolio",
-                "description": "Get portfolio details for a client including holdings, performance, and allocation.",
+                "description": "Get detailed portfolio breakdown - individual holdings, asset allocation percentages, sector weights, cost basis, and performance metrics. Use for investment holdings, allocation analysis, YTD returns, and performance questions.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -74,7 +86,7 @@ class WealthMCP:
             },
             {
                 "name": "process_payment",
-                "description": "Process a payment transaction for a client. May require step-up authentication for high-value transactions.",
+                "description": "Process financial transactions - transfers, withdrawals, distributions from investment accounts. May require CIBA step-up authentication for amounts over $10,000. Use for money movement, transfer requests, and payment processing.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -100,7 +112,7 @@ class WealthMCP:
             },
             {
                 "name": "update_client",
-                "description": "Update client information such as phone, email, or address.",
+                "description": "Update client contact information (phone, email, address) in the internal portfolio management system. Use for updating client details in the investment system.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -175,20 +187,18 @@ class WealthMCP:
                     "kyc_status": "verified",
                     "kyc_expiry": "2026-08-01",
                     "aml_flag": False,
-                    "fee_schedule": "0.75% AUM annually",
                     "trading_restrictions": [],
                     "recent_transactions": [
-                        {"date": "2024-12-15", "type": "Dividend", "amount": 4200, "description": "Q4 dividend reinvestment"},
-                        {"date": "2024-11-20", "type": "Rebalance", "amount": 0, "description": "Quarterly rebalancing"},
-                        {"date": "2024-10-01", "type": "Deposit", "amount": 50000, "description": "Annual contribution"}
-                    ],
-                    "internal_notes": "Prefers quarterly in-person reviews. Interested in ESG options for 2025."
+                        {"date": "2024-11-01", "type": "Dividend Reinvestment", "amount": 4500, "description": "Q3 dividends reinvested"},
+                        {"date": "2024-10-15", "type": "Rebalance", "amount": 0, "description": "Quarterly rebalance - reduced equity exposure"},
+                        {"date": "2024-09-30", "type": "Withdrawal", "amount": -25000, "description": "Quarterly distribution"}
+                    ]
                 },
                 
                 # ============================================================
-                # ELENA RODRIGUEZ - Retirement Planning Client
+                # ELENA RODRIGUEZ - Retirement Client
                 # Salesforce: Rodriguez Retirement Fund ($850K), Retirement Rollover opportunity
-                # Internal: Conservative allocation, target date 2028, monthly income focus
+                # Internal: Conservative allocation, income-focused, monthly distributions
                 # ============================================================
                 "CLT002": {
                     "id": "CLT002",
@@ -202,39 +212,35 @@ class WealthMCP:
                     "risk_profile": "Conservative",
                     "risk_score": 25,
                     "advisor": "Kundan Kolhe",
-                    "created_date": "2020-02-15",
+                    "created_date": "2020-03-15",
                     "last_review": "2024-10-20",
                     "next_review": "2025-01-20",
-                    "target_retirement": "2028",
-                    "monthly_income_target": 5500,
                     "holdings": [
+                        {"asset": "Investment Grade Bonds", "ticker": "BND", "allocation": 30, "value": 255000, "cost_basis": 260000},
                         {"asset": "US Large Cap Equities", "ticker": "VTI", "allocation": 20, "value": 170000, "cost_basis": 140000},
                         {"asset": "Dividend Growth", "ticker": "VIG", "allocation": 15, "value": 127500, "cost_basis": 110000},
-                        {"asset": "Investment Grade Bonds", "ticker": "BND", "allocation": 30, "value": 255000, "cost_basis": 260000},
                         {"asset": "Treasury Inflation Protected", "ticker": "VTIP", "allocation": 15, "value": 127500, "cost_basis": 125000},
-                        {"asset": "Short-Term Bonds", "ticker": "BSV", "allocation": 10, "value": 85000, "cost_basis": 84000},
+                        {"asset": "Short-Term Bonds", "ticker": "BSV", "allocation": 10, "value": 85000, "cost_basis": 85000},
                         {"asset": "Cash & Equivalents", "ticker": "VMFXX", "allocation": 10, "value": 85000, "cost_basis": 85000}
                     ],
                     "ytd_return": 5.6,
                     "inception_return": 28.4,
                     "compliance_status": "clear",
                     "kyc_status": "verified",
-                    "kyc_expiry": "2025-02-15",
+                    "kyc_expiry": "2025-03-15",
                     "aml_flag": False,
-                    "fee_schedule": "0.65% AUM annually",
                     "trading_restrictions": [],
                     "recent_transactions": [
-                        {"date": "2024-12-01", "type": "Withdrawal", "amount": 5500, "description": "Monthly income distribution"},
-                        {"date": "2024-11-01", "type": "Withdrawal", "amount": 5500, "description": "Monthly income distribution"},
-                        {"date": "2024-10-15", "type": "Rebalance", "amount": 0, "description": "Shift to more conservative allocation"}
-                    ],
-                    "internal_notes": "Planning full retirement in 2028. Wants to maintain $5,500/month income stream."
+                        {"date": "2024-11-15", "type": "Distribution", "amount": -5500, "description": "Monthly income distribution"},
+                        {"date": "2024-10-15", "type": "Rebalance", "amount": 0, "description": "Shifted to more conservative allocation"},
+                        {"date": "2024-10-01", "type": "Distribution", "amount": -5500, "description": "Monthly income distribution"}
+                    ]
                 },
                 
                 # ============================================================
-                # JAMES CHEN - Business Owner
-                # Salesforce: Chen Industries ($1.2M), Business Succession opportunity
-                # Internal: Business + personal accounts, complex tax situation
+                # JAMES CHEN - Business Owner Client
+                # Salesforce: Chen Industries Holdings ($1.2M), Business Succession opportunity
+                # Internal: Growth-oriented, concentrated stock position, tax-sensitive
                 # ============================================================
                 "CLT003": {
                     "id": "CLT003",
@@ -245,40 +251,38 @@ class WealthMCP:
                     "account_type": "Business Owner",
                     "account_name": "Chen Industries Holdings",
                     "portfolio_value": 1200000.00,
-                    "risk_profile": "Moderate-Aggressive",
-                    "risk_score": 62,
+                    "risk_profile": "Aggressive",
+                    "risk_score": 72,
                     "advisor": "Kundan Kolhe",
-                    "created_date": "2021-03-10",
+                    "created_date": "2021-06-01",
                     "last_review": "2024-09-15",
-                    "next_review": "2025-01-15",
+                    "next_review": "2025-03-15",
                     "holdings": [
-                        {"asset": "US Large Cap Growth", "ticker": "VUG", "allocation": 30, "value": 360000, "cost_basis": 280000},
+                        {"asset": "Company Stock (CHEN)", "ticker": "CHEN", "allocation": 35, "value": 420000, "cost_basis": 50000},
+                        {"asset": "US Large Cap Growth", "ticker": "VUG", "allocation": 20, "value": 240000, "cost_basis": 180000},
                         {"asset": "US Small Cap", "ticker": "VB", "allocation": 15, "value": 180000, "cost_basis": 150000},
-                        {"asset": "International Developed", "ticker": "VEA", "allocation": 15, "value": 180000, "cost_basis": 170000},
-                        {"asset": "Corporate Bonds", "ticker": "VCIT", "allocation": 15, "value": 180000, "cost_basis": 185000},
-                        {"asset": "Company Stock (Chen Ind.)", "ticker": "PRIVATE", "allocation": 15, "value": 180000, "cost_basis": 50000},
+                        {"asset": "International Developed", "ticker": "VEA", "allocation": 10, "value": 120000, "cost_basis": 100000},
+                        {"asset": "Emerging Markets", "ticker": "VWO", "allocation": 10, "value": 120000, "cost_basis": 95000},
                         {"asset": "Cash & Equivalents", "ticker": "VMFXX", "allocation": 10, "value": 120000, "cost_basis": 120000}
                     ],
-                    "ytd_return": 11.2,
-                    "inception_return": 35.8,
+                    "ytd_return": 18.5,
+                    "inception_return": 65.3,
                     "compliance_status": "clear",
                     "kyc_status": "verified",
-                    "kyc_expiry": "2025-03-10",
+                    "kyc_expiry": "2026-06-01",
                     "aml_flag": False,
-                    "fee_schedule": "0.70% AUM annually",
-                    "trading_restrictions": ["Concentrated position in PRIVATE - diversification recommended"],
+                    "trading_restrictions": ["Company stock subject to Rule 144 - 90 day holding period"],
                     "recent_transactions": [
-                        {"date": "2024-12-10", "type": "Deposit", "amount": 100000, "description": "Q4 business profit distribution"},
-                        {"date": "2024-09-15", "type": "Tax Loss Harvest", "amount": 0, "description": "Harvested $15K in losses"},
-                        {"date": "2024-06-01", "type": "Deposit", "amount": 75000, "description": "Q2 business profit distribution"}
-                    ],
-                    "internal_notes": "Discussing business succession planning. Wants to reduce company stock concentration over 3 years."
+                        {"date": "2024-11-20", "type": "Stock Sale", "amount": 50000, "description": "Partial CHEN stock sale under Rule 144"},
+                        {"date": "2024-10-01", "type": "Deposit", "amount": 100000, "description": "Business profit contribution"},
+                        {"date": "2024-08-15", "type": "Tax Payment", "amount": -35000, "description": "Estimated quarterly tax"}
+                    ]
                 },
                 
                 # ============================================================
-                # PRIYA PATEL - Young Professional (Growth Focus)
-                # Salesforce: Patel Investment Account ($150K), Growth Portfolio opportunity (Closed Won)
-                # Internal: Aggressive growth, tech-heavy, high risk tolerance
+                # PRIYA PATEL - Growth Client
+                # Salesforce: Patel Investment Account ($150K), New Growth opportunity
+                # Internal: Newer client, growth allocation, building relationship
                 # ============================================================
                 "CLT004": {
                     "id": "CLT004",
@@ -289,169 +293,116 @@ class WealthMCP:
                     "account_type": "Growth",
                     "account_name": "Patel Investment Account",
                     "portfolio_value": 150000.00,
-                    "risk_profile": "Aggressive",
-                    "risk_score": 82,
+                    "risk_profile": "Moderate-Aggressive",
+                    "risk_score": 62,
                     "advisor": "Kundan Kolhe",
-                    "created_date": "2024-06-15",
-                    "last_review": "2024-12-01",
-                    "next_review": "2025-03-01",
+                    "created_date": "2024-01-15",
+                    "last_review": "2024-07-15",
+                    "next_review": "2025-01-15",
                     "holdings": [
-                        {"asset": "US Large Cap Growth", "ticker": "VUG", "allocation": 35, "value": 52500, "cost_basis": 45000},
-                        {"asset": "Technology Sector", "ticker": "VGT", "allocation": 25, "value": 37500, "cost_basis": 32000},
-                        {"asset": "US Small Cap Growth", "ticker": "VBK", "allocation": 20, "value": 30000, "cost_basis": 28000},
-                        {"asset": "Emerging Markets", "ticker": "VWO", "allocation": 15, "value": 22500, "cost_basis": 24000},
-                        {"asset": "Cash & Equivalents", "ticker": "VMFXX", "allocation": 5, "value": 7500, "cost_basis": 7500}
+                        {"asset": "US Total Market", "ticker": "VTI", "allocation": 40, "value": 60000, "cost_basis": 55000},
+                        {"asset": "International Developed", "ticker": "VEA", "allocation": 20, "value": 30000, "cost_basis": 28000},
+                        {"asset": "Emerging Markets", "ticker": "VWO", "allocation": 15, "value": 22500, "cost_basis": 20000},
+                        {"asset": "US Small Cap Growth", "ticker": "VBK", "allocation": 15, "value": 22500, "cost_basis": 21000},
+                        {"asset": "Cash & Equivalents", "ticker": "VMFXX", "allocation": 10, "value": 15000, "cost_basis": 15000}
                     ],
-                    "ytd_return": 18.5,
-                    "inception_return": 18.5,
+                    "ytd_return": 12.3,
+                    "inception_return": 12.3,
                     "compliance_status": "clear",
                     "kyc_status": "verified",
-                    "kyc_expiry": "2027-06-15",
+                    "kyc_expiry": "2027-01-15",
                     "aml_flag": False,
-                    "fee_schedule": "0.50% AUM annually",
                     "trading_restrictions": [],
                     "recent_transactions": [
-                        {"date": "2024-12-15", "type": "Deposit", "amount": 2500, "description": "Monthly auto-investment"},
-                        {"date": "2024-11-15", "type": "Deposit", "amount": 2500, "description": "Monthly auto-investment"},
-                        {"date": "2024-10-15", "type": "Deposit", "amount": 2500, "description": "Monthly auto-investment"}
-                    ],
-                    "internal_notes": "New client, aggressive growth focus. Contributing $2,500/month. 30-year investment horizon."
-                },
-                
-                # ============================================================
-                # ROBERT WILLIAMS - Estate Planning (COMPLIANCE HOLD - FGA Demo)
-                # Salesforce: Williams Estate ($3.1M), Estate Restructure opportunity
-                # Internal: COMPLIANCE HOLD due to pending estate litigation
-                # ============================================================
-                "CLT005": {
-                    "id": "CLT005",
-                    "name": "Robert Williams",
-                    "email": "rwilliams@williamsestate.org",
-                    "phone": "555-0105",
-                    "status": "Active",
-                    "account_type": "Estate",
-                    "account_name": "Williams Estate",
-                    "portfolio_value": 3100000.00,
-                    "risk_profile": "Conservative",
-                    "risk_score": 20,
-                    "advisor": "Kundan Kolhe",
-                    "created_date": "2018-05-20",
-                    "last_review": "2024-08-01",
-                    "next_review": "HOLD - Pending Compliance Review",
-                    "holdings": [
-                        {"asset": "US Large Cap Value", "ticker": "VTV", "allocation": 20, "value": 620000, "cost_basis": 500000},
-                        {"asset": "Dividend Aristocrats", "ticker": "NOBL", "allocation": 15, "value": 465000, "cost_basis": 400000},
-                        {"asset": "Investment Grade Bonds", "ticker": "BND", "allocation": 25, "value": 775000, "cost_basis": 800000},
-                        {"asset": "Municipal Bonds", "ticker": "VTEB", "allocation": 20, "value": 620000, "cost_basis": 600000},
-                        {"asset": "Treasury Bonds", "ticker": "VGLT", "allocation": 10, "value": 310000, "cost_basis": 320000},
-                        {"asset": "Cash & Equivalents", "ticker": "VMFXX", "allocation": 10, "value": 310000, "cost_basis": 310000}
-                    ],
-                    "ytd_return": 4.2,
-                    "inception_return": 52.1,
-                    "compliance_status": "hold",  # FGA DEMO - Access will be denied
-                    "compliance_reason": "Pending estate litigation - beneficiary dispute",
-                    "kyc_status": "review_required",
-                    "kyc_expiry": "2024-05-20",  # Expired
-                    "aml_flag": True,  # Flagged for review
-                    "fee_schedule": "0.60% AUM annually",
-                    "trading_restrictions": ["NO TRADES - Compliance hold", "NO WITHDRAWALS - Court order"],
-                    "recent_transactions": [
-                        {"date": "2024-08-01", "type": "Hold Placed", "amount": 0, "description": "Compliance hold - estate litigation"},
-                        {"date": "2024-07-15", "type": "Dividend", "amount": 12500, "description": "Q2 dividends (held in cash)"},
-                        {"date": "2024-04-15", "type": "Dividend", "amount": 11800, "description": "Q1 dividends"}
-                    ],
-                    "internal_notes": "COMPLIANCE HOLD: Estate beneficiary dispute in litigation. No trading or withdrawals until resolved. Legal review required before any action."
+                        {"date": "2024-11-01", "type": "Deposit", "amount": 5000, "description": "Monthly contribution"},
+                        {"date": "2024-10-01", "type": "Deposit", "amount": 5000, "description": "Monthly contribution"},
+                        {"date": "2024-09-01", "type": "Deposit", "amount": 5000, "description": "Monthly contribution"}
+                    ]
                 }
             },
+            
+            # Transaction approval thresholds (for HITL demo)
+            "transaction_limits": {
+                "auto_approve": 1000,           # Under $1K: auto-approve
+                "requires_step_up": 10000,      # $10K+: requires CIBA step-up
+                "requires_manager": 50000,      # $50K+: manager approval
+                "requires_vp": 250000,          # $250K+: VP approval
+                "requires_compliance": 500000   # $500K+: compliance review
+            },
+            
+            # Blocked recipients for risk demo
             "blocked_recipients": [
                 "Offshore Holdings LLC",
-                "Anonymous Trust", 
-                "Unverified Account",
-                "Crypto Exchange XYZ"
-            ],
-            "high_risk_countries": ["Country A", "Country B", "Country C"],
-            "transaction_limits": {
-                "auto_approve": 1000,
-                "requires_logging": 10000,
-                "requires_step_up": 10000,
-                "requires_compliance": 50000
-            }
+                "Anonymous Trust",
+                "CryptoMixer Services"
+            ]
         }
     
     def list_tools(self) -> List[Dict[str, Any]]:
         """Return list of available tools"""
         return self.tools
     
-    def _find_client(self, identifier: str) -> Optional[Dict[str, Any]]:
+    async def call_tool(self, tool_name: str, args: Dict, user_info: Dict) -> Dict[str, Any]:
+        """Execute a tool with given arguments"""
+        logger.info(f"[MCP] Calling tool: {tool_name}")
+        
+        tool_handlers = {
+            "get_client": self._tool_get_client,
+            "list_clients": self._tool_list_clients,
+            "get_portfolio": self._tool_get_portfolio,
+            "process_payment": self._tool_process_payment,
+            "update_client": self._tool_update_client
+        }
+        
+        handler = tool_handlers.get(tool_name)
+        if not handler:
+            return {"error": "unknown_tool", "message": f"Tool '{tool_name}' not found"}
+        
+        try:
+            result = await handler(args, user_info)
+            return result
+        except Exception as e:
+            logger.error(f"[MCP] Tool error: {e}", exc_info=True)
+            return {"error": "tool_error", "message": str(e)}
+    
+    def _find_client(self, identifier: str) -> Optional[Dict]:
         """Find client by name or ID"""
         identifier_lower = identifier.lower()
         
         for client_id, client in self.clients_data["clients"].items():
             if client_id.lower() == identifier_lower:
                 return client
+            if client["name"].lower() == identifier_lower:
+                return client
+            # Partial name match
             if identifier_lower in client["name"].lower():
                 return client
         
         return None
     
-    def _check_compliance(self, client: Dict[str, Any]) -> bool:
-        """Check if client passes compliance check (FGA simulation)"""
-        return client.get("compliance_status") == "clear"
-    
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute an MCP tool.
-        
-        Args:
-            tool_name: Name of the tool to call
-            arguments: Tool arguments
-            user_info: User context including mcp_token
-        """
-        try:
-            # Check for MCP token (XAA validation)
-            mcp_token = user_info.get("mcp_token")
-            if not mcp_token:
-                logger.warning("[MCP] No MCP token provided")
-                # For demo, we'll allow access but log warning
-                # In production, this would return unauthorized
-            
-            logger.info(f"[MCP] Calling tool: {tool_name}")
-            
-            if tool_name == "get_client":
-                return await self._tool_get_client(arguments, user_info)
-            elif tool_name == "list_clients":
-                return await self._tool_list_clients(arguments, user_info)
-            elif tool_name == "get_portfolio":
-                return await self._tool_get_portfolio(arguments, user_info)
-            elif tool_name == "process_payment":
-                return await self._tool_process_payment(arguments, user_info)
-            elif tool_name == "update_client":
-                return await self._tool_update_client(arguments, user_info)
-            else:
-                return {"error": f"Unknown tool: {tool_name}"}
-                
-        except Exception as e:
-            logger.error(f"[MCP] Tool error: {e}", exc_info=True)
-            return {"error": str(e)}
+    def _check_compliance(self, client: Dict) -> bool:
+        """Check if client passes compliance checks"""
+        if client.get("compliance_status") != "clear":
+            return False
+        if client.get("aml_flag", False):
+            return False
+        return True
     
     async def _tool_get_client(self, args: Dict, user_info: Dict) -> Dict[str, Any]:
-        """Get client information with full operational details"""
+        """Get client financial profile"""
         identifier = args.get("client_identifier", "")
         client = self._find_client(identifier)
         
         if not client:
-            return {
-                "error": "client_not_found",
-                "message": f"Client '{identifier}' not found in internal systems"
-            }
+            return {"error": "client_not_found", "message": f"Client '{identifier}' not found in portfolio system"}
         
-        # FGA check - compliance hold
+        # Check compliance before returning data
         if not self._check_compliance(client):
             return {
                 "error": "access_denied",
-                "message": f"Access to {client['name']} is restricted: {client.get('compliance_reason', 'Compliance hold')}",
-                "security_control": "FGA - Compliance Hold",
-                "action_required": "Contact compliance team for review"
+                "message": f"Access to {client['name']}'s data is restricted due to compliance hold",
+                "compliance_reason": client.get("compliance_reason", "Pending review"),
+                "security_control": "FGA - Compliance Hold"
             }
         
         return {
@@ -462,23 +413,23 @@ class WealthMCP:
                 "phone": client["phone"],
                 "status": client["status"],
                 "account_type": client["account_type"],
-                "account_name": client["account_name"],
+                "account_name": client.get("account_name", "N/A"),
                 "portfolio_value": f"${client['portfolio_value']:,.2f}",
                 "risk_profile": client["risk_profile"],
-                "risk_score": client.get("risk_score", "N/A"),
+                "risk_score": f"{client.get('risk_score', 'N/A')}/100",
                 "advisor": client["advisor"],
+                "ytd_return": f"{client['ytd_return']}%",
+                "inception_return": f"{client.get('inception_return', 'N/A')}%",
                 "last_review": client["last_review"],
                 "next_review": client.get("next_review", "Not scheduled"),
-                "ytd_return": f"{client['ytd_return']}%",
                 "compliance_status": client["compliance_status"],
-                "kyc_status": client.get("kyc_status", "N/A"),
-                "fee_schedule": client.get("fee_schedule", "N/A")
+                "trading_restrictions": client.get("trading_restrictions", [])
             },
             "source": "Internal Portfolio Management System"
         }
     
     async def _tool_list_clients(self, args: Dict, user_info: Dict) -> Dict[str, Any]:
-        """List all clients with summary information"""
+        """List all clients with portfolio summary"""
         status_filter = args.get("status_filter", "Active")
         
         clients = []
