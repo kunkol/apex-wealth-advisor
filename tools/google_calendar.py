@@ -1,6 +1,11 @@
 """
 Google Calendar Tools
 Accesses Google Calendar API via Auth0 Token Vault
+
+Version: 2.0 - Fixed cancel matching logic (2026-01-07)
+  - Require title match when title is provided (don't accept date-only matches)
+  - Increased minimum score threshold
+  - Better logging for debugging
 """
 
 import re
@@ -725,6 +730,7 @@ class GoogleCalendarTools:
                 # Search for matching event
                 best_match = None
                 best_score = 0
+                best_title_score = 0  # Track title match separately
                 
                 for event in events:
                     summary = event.get("summary", "").lower()
@@ -732,32 +738,51 @@ class GoogleCalendarTools:
                     event_date_str = start.split("T")[0] if "T" in start else start
                     
                     score = 0
+                    title_score = 0  # Track how well the title matches
                     
                     # Check title match
                     for term in title_terms:
                         if term in summary:
                             score += 2
+                            title_score += 2
                     
                     # Check date match
-                    if target_date and target_date == event_date_str:
+                    date_matches = target_date and target_date == event_date_str
+                    if date_matches:
                         score += 5
                     
                     # Check for key names (Marcus, Thompson, Elena, etc.)
-                    key_names = ["marcus", "thompson", "elena", "rodriguez", "james", "chen", "portfolio", "review", "retirement", "onboarding"]
+                    key_names = ["marcus", "thompson", "elena", "rodriguez", "james", "chen", "portfolio", "review", "retirement", "onboarding", "test", "meeting"]
                     for name in key_names:
                         if name in summary and name in (event_title.lower() if event_title else ""):
                             score += 3
+                            title_score += 3
+                    
+                    # Only consider this a match if:
+                    # 1. Title was provided AND at least one title term matched, OR
+                    # 2. No title was provided (date-only search)
+                    title_provided = bool(title_terms)
+                    title_matched = title_score > 0
                     
                     if score > best_score:
+                        # If title was provided, require at least some title match
+                        if title_provided and not title_matched:
+                            logger.debug(f"[Google Calendar] Skipping '{summary}' - date matches but no title match (score={score}, title_score={title_score})")
+                            continue
+                        
                         best_score = score
+                        best_title_score = title_score
                         best_match = event
-                        logger.info(f"[Google Calendar] New best match (score={score}): '{summary}' on {event_date_str}")
+                        logger.info(f"[Google Calendar] New best match (score={score}, title_score={title_score}): '{summary}' on {event_date_str}")
                 
-                if best_match and best_score >= 3:
+                # Require minimum score AND title match if title was provided
+                min_score = 6 if title_terms else 3  # Higher threshold when title is provided
+                
+                if best_match and best_score >= min_score:
                     event_id = best_match.get("id")
-                    logger.info(f"[Google Calendar] Found matching event: '{best_match.get('summary')}' with ID {event_id} (score={best_score})")
+                    logger.info(f"[Google Calendar] Found matching event: '{best_match.get('summary')}' with ID {event_id} (score={best_score}, title_score={best_title_score})")
                 else:
-                    logger.warning(f"[Google Calendar] Could not find event matching: title='{event_title}', date='{event_date}' (best_score={best_score})")
+                    logger.warning(f"[Google Calendar] Could not find event matching: title='{event_title}', date='{event_date}' (best_score={best_score}, min_required={min_score})")
                     return {"error": "not_found", "message": f"Could not find event matching '{event_title}' on {event_date}. Please check the meeting title and date."}
                     
             except Exception as e:
