@@ -3,12 +3,15 @@ Claude AI Service
 Handles conversation with Claude API including tool calling.
 Routes tools to appropriate security flow (Okta XAA vs Auth0 Token Vault).
 
-Version: 2.0 - Added hallucination detection (2026-01-07)
+Version: 2.1 - Improved hallucination detection (2026-01-07)
+  - v2.0: Added hallucination detection
+  - v2.1: Fixed false positives - only trigger on explicit success claims
 """
 
 import logging
 import os
 import json
+import re
 from typing import Dict, Any, List, Optional
 import anthropic
 
@@ -21,22 +24,43 @@ SALESFORCE_TOOLS = ["search_salesforce_contacts", "create_salesforce_contact", "
                     "get_sales_pipeline", "get_high_value_accounts", "create_salesforce_task", 
                     "create_salesforce_note", "get_pipeline_value", "update_opportunity_stage"]
 
-# Hallucination detection: map action keywords to expected tools
-ACTION_TOOL_MAP = {
-    "cancelled": ["cancel_calendar_event"],
-    "canceled": ["cancel_calendar_event"],
-    "meeting has been cancelled": ["cancel_calendar_event"],
-    "successfully cancelled": ["cancel_calendar_event"],
-    "scheduled": ["create_calendar_event"],
-    "meeting scheduled": ["create_calendar_event"],
-    "created a new contact": ["create_salesforce_contact"],
-    "created a task": ["create_salesforce_task"],
-    "added a note": ["create_salesforce_note"],
-    "updated the opportunity": ["update_opportunity_stage"],
-    "updated the stage": ["update_opportunity_stage"],
-    "payment processed": ["process_payment"],
-    "transfer complete": ["process_payment"],
-}
+# Hallucination detection v2.1: Only explicit success claims (not mentions of existing items)
+# Format: (regex_pattern, expected_tools)
+HALLUCINATION_PATTERNS = [
+    # Cancel patterns - explicit success claims
+    (r"i'?ve successfully cancelled", ["cancel_calendar_event"]),
+    (r"i'?ve cancelled", ["cancel_calendar_event"]),
+    (r"successfully cancelled", ["cancel_calendar_event"]),
+    (r"meeting has been cancelled", ["cancel_calendar_event"]),
+    (r"event has been cancelled", ["cancel_calendar_event"]),
+    (r"has been removed from your.*calendar", ["cancel_calendar_event"]),
+    
+    # Create/Schedule patterns - explicit success claims
+    (r"i'?ve successfully scheduled", ["create_calendar_event"]),
+    (r"i'?ve scheduled", ["create_calendar_event"]),
+    (r"successfully scheduled", ["create_calendar_event"]),
+    (r"meeting has been scheduled", ["create_calendar_event"]),
+    (r"i'?ve created a meeting", ["create_calendar_event"]),
+    (r"calendar invite sent", ["create_calendar_event"]),
+    
+    # Salesforce create patterns
+    (r"i'?ve created a new contact", ["create_salesforce_contact"]),
+    (r"contact has been created", ["create_salesforce_contact"]),
+    (r"i'?ve created a task", ["create_salesforce_task"]),
+    (r"task has been created", ["create_salesforce_task"]),
+    (r"i'?ve added a note", ["create_salesforce_note"]),
+    (r"note has been added", ["create_salesforce_note"]),
+    
+    # Update patterns
+    (r"i'?ve updated the opportunity", ["update_opportunity_stage"]),
+    (r"opportunity.*has been updated", ["update_opportunity_stage"]),
+    (r"stage has been changed", ["update_opportunity_stage"]),
+    
+    # Payment patterns
+    (r"payment has been processed", ["process_payment"]),
+    (r"transfer has been completed", ["process_payment"]),
+    (r"i'?ve processed the payment", ["process_payment"]),
+]
 
 
 class ClaudeService:
@@ -132,17 +156,20 @@ When security controls block an action, explain why clearly and suggest alternat
         """
         Detect if Claude claimed to perform an action without calling the tool.
         
+        v2.1: Uses regex patterns to only match explicit success claims,
+        not casual mentions of existing items (e.g., "you have a scheduled meeting").
+        
         Returns warning message if hallucination detected, None otherwise.
         """
         response_lower = response_text.lower()
         
-        for action_phrase, expected_tools in ACTION_TOOL_MAP.items():
-            if action_phrase in response_lower:
+        for pattern, expected_tools in HALLUCINATION_PATTERNS:
+            if re.search(pattern, response_lower):
                 # Check if any expected tool was actually called
                 tool_was_called = any(tool in tools_called for tool in expected_tools)
                 if not tool_was_called:
                     logger.warning(
-                        f"[Claude] HALLUCINATION DETECTED: Response contains '{action_phrase}' "
+                        f"[Claude] HALLUCINATION DETECTED: Response matches '{pattern}' "
                         f"but tools {expected_tools} were not called. Tools called: {tools_called}"
                     )
                     return (
@@ -312,8 +339,9 @@ When security controls block an action, explain why clearly and suggest alternat
                     final_content += content_block.text
             
             # ================================================================
-            # HALLUCINATION DETECTION
+            # HALLUCINATION DETECTION v2.1
             # Check if Claude claimed to do something without calling the tool
+            # Only triggers on explicit success claims, not mentions of existing items
             # ================================================================
             hallucination_warning = self._detect_hallucination(final_content, tools_called)
             if hallucination_warning:
