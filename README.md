@@ -185,17 +185,16 @@ sequenceDiagram
 ### Flow 2: Auth0 Token Vault — External Services
 
 ```
-┌──────────┐      ┌──────────┐      ┌──────────────┐      ┌──────────────┐
-│  Okta    │      │  Vault   │      │  Salesforce  │      │  Salesforce  │
-│  Token   │─────▶│  Access  │──┬──▶│    Token     │─────▶│     API      │
-│          │      │  Token   │  │   │              │      │              │
-└──────────┘      └──────────┘  │   └──────────────┘      └──────────────┘
-                       │        │
-                       │        │   ┌──────────────┐      ┌──────────────┐
-              No Credentials    └──▶│   Google     │─────▶│   Google     │
-              Stored in App         │    Token     │      │ Calendar API │
-                                    │              │      │              │
-                                    └──────────────┘      └──────────────┘
+                                        ┌────────────────┐     ┌────────────────┐
+                                   ┌───▶│ Salesforce Token│────▶│ Salesforce API │
+┌────────────┐     ┌────────────┐  │    └────────────────┘     └────────────────┘
+│   Okta     │────▶│   Vault    │──┤
+│   Token    │     │   Token    │  │    ┌────────────────┐     ┌────────────────┐
+└────────────┘     └────────────┘  └───▶│  Google Token  │────▶│  Google Calendar│
+                         │              └────────────────┘     └────────────────┘
+                         │
+                  No Credentials
+                  Stored in App
 ```
 
 ```mermaid
