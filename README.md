@@ -1,134 +1,322 @@
-# Apex Wealth Advisor
+# 🏦 Apex Wealth Advisor
 
-AI-powered wealth advisory platform demonstrating enterprise-grade security patterns:
+**AI-Powered Wealth Advisory Platform with Enterprise-Grade Agent Security**
 
-- **Okta XAA/ID-JAG** - Cross-App Access for internal MCP tools
-- **Auth0 Token Vault** - Third-party API access (Salesforce, Google)
-- **Fine-Grained Authorization (FGA)** - Compliance-based access control
-- **CIBA Step-Up Authentication** - High-value transaction approval
+A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA), Auth0 Token Vault, and human-in-the-loop governance patterns.
 
-## Architecture
+![Demo Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-24%2F24%20Passing-brightgreen)
+![Security](https://img.shields.io/badge/Security-Enterprise%20Grade-blue)
+
+---
+
+## 🎯 What This Demo Shows
+
+| Capability | Implementation | Why It Matters |
+|------------|----------------|----------------|
+| **Agent Identity** | Okta XAA with ID-JAG tokens | Agents get identity, not just API keys |
+| **Credential Security** | Auth0 Token Vault | Zero stored secrets in application |
+| **Multi-System Access** | MCP + Salesforce + Google Calendar | Single prompt orchestrates multiple systems |
+| **Human-in-the-Loop** | CIBA step-up authentication | Policy-driven human approval for sensitive actions |
+| **Natural Language Routing** | Claude AI with tool descriptions | Agent auto-selects tools without explicit routing |
+
+---
+
+## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           IDENTITY LAYER                                 │
-├─────────────────────────────────┬───────────────────────────────────────┤
-│         OKTA (XAA)              │         AUTH0 (Token Vault)           │
-│  - User Authentication          │  - Salesforce tokens                  │
-│  - AI Agent: Buffett            │  - Google tokens                      │
-│  - MCP Auth Server              │  - Cross-tenant exchange              │
-└─────────────────────────────────┴───────────────────────────────────────┘
-                    │                           │
-                    ▼                           ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         apex-wealth-api                                  │
-│                   (Claude AI + Orchestration)                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│  • Claude Service (tool calling)                                        │
-│  • XAA Manager (ID-JAG exchange)                                        │
-│  • Token Vault Client                                                    │
-└─────────────────────────────────────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         apex-wealth-mcp                                  │
-│                    (MCP Server - Tools)                                 │
-├─────────────────────────────────────────────────────────────────────────┤
-│  • get_client      - Client lookup (FGA enforced)                       │
-│  • list_clients    - List all clients                                   │
-│  • get_portfolio   - Portfolio details                                  │
-│  • process_payment - Payments (CIBA step-up for high value)            │
-│  • update_client   - Update contact info (write scope required)         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              APEX WEALTH ADVISOR                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌─────────┐      ┌─────────────┐      ┌─────────────────────────────┐    │
+│   │  User   │──────│   Vercel    │──────│        Render API           │    │
+│   │ Browser │      │  Frontend   │      │    (Python/FastAPI)         │    │
+│   └─────────┘      └─────────────┘      └──────────────┬──────────────┘    │
+│                                                        │                    │
+│                    ┌───────────────────────────────────┼────────────────┐   │
+│                    │                                   │                │   │
+│            ┌───────▼───────┐    ┌─────────────────────▼────────────┐   │   │
+│            │   Okta XAA    │    │        Auth0 Token Vault         │   │   │
+│            │  (ID-JAG +    │    │    (Salesforce + Google tokens)  │   │   │
+│            │ Token Exchange)│    └─────────────┬───────────────────┘   │   │
+│            └───────┬───────┘                  │                        │   │
+│                    │                          │                        │   │
+│            ┌───────▼───────┐    ┌─────────────▼───────┐  ┌───────────▼─┐  │
+│            │  Internal MCP │    │     Salesforce      │  │   Google    │  │
+│            │    Server     │    │        CRM          │  │  Calendar   │  │
+│            │  (5 tools)    │    │     (9 tools)       │  │  (5 tools)  │  │
+│            └───────────────┘    └─────────────────────┘  └─────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Services
+---
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Frontend | https://apex-wealth-app.vercel.app | Next.js UI |
-| Backend API | https://apex-wealth-api.onrender.com | Claude + Auth |
-| MCP Server | https://apex-wealth-mcp.onrender.com | Tools + Data |
+## 🔐 Security Flows
 
-## Demo Prompts
+### Flow 1: Okta Cross-App Access (XAA) — Internal MCP Server
 
-### Category 1: Internal MCP (XAA)
 ```
-"Look up client Alice Johnson"
-"What's Bob Smith's account balance?"
-"Show me Charlie Brown's information"  → ACCESS DENIED (compliance hold)
-"List all my clients"
-"Process a $500 payment for Alice"     → Auto-approved
-"Process a $15,000 payment for Alice"  → CIBA step-up required
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  User    │    │  Okta    │    │  ID-JAG  │    │   MCP    │    │ Internal │
+│ ID Token │───▶│  Token   │───▶│  Token   │───▶│  Access  │───▶│   MCP    │
+│          │    │ Exchange │    │          │    │  Token   │    │  Server  │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
+                                     │
+                              Agent Identity
+                              Claims Embedded
 ```
 
-### Category 2: Security Scenarios
+**Key Points:**
+- RFC 8693 token exchange for secure service-to-service auth
+- ID-JAG token carries agent identity claims
+- MCP token scoped to `mcp:read` and `mcp:write`
+- Short-lived tokens (5 min ID-JAG, 1 hour MCP)
+
+### Flow 2: Auth0 Token Vault — External Services
+
 ```
-"Show me Charlie Brown's data"         → FGA denial
-"Transfer $50K to Offshore Holdings"   → Risk policy blocked
-"Process $15,000 payment"              → CIBA required
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Okta    │    │  Vault   │    │ Salesforce│   │  Google  │    │ External │
+│  Token   │───▶│  Access  │───▶│  Token   │───▶│  Token   │───▶│   APIs   │
+│          │    │  Token   │    │          │    │          │    │          │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
+                     │
+              No Credentials
+              Stored in App
 ```
 
-## Local Development
+**Key Points:**
+- Credentials retrieved on-demand, never persisted
+- Scoped tokens per service (Salesforce CRM, Google Calendar)
+- Token Vault manages refresh automatically
+- Audit trail for all credential access
+
+### Flow 3: CIBA Step-Up — Human-in-the-Loop
+
+```
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Agent   │    │  Policy  │    │   CIBA   │    │   Push   │    │  Human   │
+│ Request  │───▶│  Check   │───▶│  Auth    │───▶│  Notif   │───▶│ Approval │
+│ ($15K)   │    │ (>$10K)  │    │ Request  │    │ to Phone │    │          │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
+                     │
+              Threshold-Based
+              Policy Evaluation
+```
+
+**Key Points:**
+- OpenID CIBA (Client-Initiated Backchannel Authentication)
+- Configurable thresholds trigger human approval
+- Transaction pending until explicit approval
+- Full audit trail of approval decisions
+
+---
+
+## 🛠️ Tools Available (19 Total)
+
+### Internal MCP Server (5 tools) — via Okta XAA
+| Tool | Description |
+|------|-------------|
+| `get_client` | Get client profile and portfolio summary |
+| `list_clients` | List all clients with AUM and risk profiles |
+| `get_portfolio` | Get detailed portfolio holdings and allocation |
+| `process_payment` | Process transfers (HITL for >$10K) |
+| `get_market_data` | Get market indices and performance |
+
+### Salesforce CRM (9 tools) — via Token Vault
+| Tool | Description |
+|------|-------------|
+| `search_salesforce_contacts` | Search CRM contacts |
+| `get_contact_opportunities` | Get opportunities for a contact |
+| `get_sales_pipeline` | Pipeline summary by stage |
+| `get_pipeline_value` | Total open pipeline value |
+| `get_high_value_accounts` | Opportunities over $100K |
+| `create_salesforce_task` | Create follow-up tasks |
+| `create_salesforce_note` | Add notes to accounts |
+| `create_salesforce_contact` | Create new contacts |
+| `update_opportunity_stage` | Update opportunity stages |
+
+### Google Calendar (5 tools) — via Token Vault
+| Tool | Description |
+|------|-------------|
+| `list_calendar_events` | List upcoming meetings |
+| `create_calendar_event` | Schedule new meetings |
+| `cancel_calendar_event` | Cancel existing meetings |
+| `get_calendar_event` | Get event details |
+| `update_calendar_event` | Modify existing events |
+
+---
+
+## 🎮 Demo Scenarios
+
+### Quick Demo (5 minutes, 6 prompts)
+
+| # | Prompt | What It Shows |
+|---|--------|---------------|
+| 1 | "Show me all my clients with their AUM and risk profiles." | MCP + Okta XAA |
+| 2 | "What opportunities do we have with Elena Rodriguez?" | Salesforce + Token Vault |
+| 3 | "Prepare for a client review with Elena Rodriguez..." | **5 tools, 3 systems** ⭐ |
+| 4 | "Process a $5,000 transfer from Marcus Thompson..." | HITL auto-approve |
+| 5 | "Process a $15,000 transfer from Elena Rodriguez..." | HITL step-up (CIBA) |
+| 6 | "Cancel my meeting with Elena Rodriguez..." | Cleanup |
+
+### Full Test Suite (24 prompts across 7 phases)
+
+All prompts available in the **📚 Prompt Library** within the app.
+
+| Phase | Focus | Tests |
+|-------|-------|-------|
+| 1 | Portfolio Management (MCP) | 4 |
+| 2 | CRM Read Operations | 6 |
+| 3 | CRM Create Operations | 4 |
+| 4 | Scheduling (Calendar) | 2 |
+| 5 | Transactions (HITL) | 2 |
+| 6 | Multi-System Workflows | 2 |
+| 7 | Demo Reset/Cleanup | 4 |
+
+---
+
+## 🚀 Deployment
+
+### Live Demo
+- **Frontend:** https://apex-wealth-advisor.vercel.app
+- **API:** https://apex-wealth-api.onrender.com
+
+### Infrastructure
+
+| Component | Platform | Purpose |
+|-----------|----------|---------|
+| Frontend | Vercel | React chat interface |
+| API | Render | FastAPI backend |
+| MCP Server | Embedded | Internal portfolio data |
+| Salesforce | Cloud | CRM integration |
+| Google Calendar | Cloud | Scheduling integration |
+| Okta | Cloud | XAA, authentication |
+| Auth0 | Cloud | Token Vault |
+
+---
+
+## 📁 Project Structure
+
+```
+apex-wealth-advisor/
+├── api/
+│   └── main.py                 # FastAPI entry point
+├── auth/
+│   ├── okta_cross_app_access.py  # XAA token exchange
+│   └── token_vault.py            # Auth0 Token Vault
+├── mcp_server/
+│   └── wealth_mcp.py           # Internal MCP tools
+├── services/
+│   └── claude_service.py       # Claude AI orchestration
+├── tools/
+│   ├── google_calendar.py      # Calendar operations
+│   └── salesforce_tools.py     # CRM operations
+├── frontend/
+│   └── src/
+│       └── components/
+│           ├── ChatInterface.tsx
+│           ├── PromptLibrary.tsx
+│           └── SecurityFlowTab.tsx
+├── requirements.txt
+└── render.yaml
+```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+```bash
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Okta XAA
+OKTA_ORG_URL=https://your-org.oktapreview.com
+OKTA_CLIENT_ID=0oa...
+OKTA_CLIENT_SECRET=...
+OKTA_AGENT_ID=wlpt...
+OKTA_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----...
+OKTA_MCP_AUTH_SERVER_ID=aus...
+OKTA_MCP_AUDIENCE=apex-wealth-mcp
+
+# Auth0 Token Vault
+AUTH0_DOMAIN=your-tenant.us.auth0.com
+AUTH0_VAULT_CLIENT_ID=...
+AUTH0_VAULT_CLIENT_SECRET=...
+
+# Salesforce
+SF_INSTANCE_URL=https://your-instance.salesforce.com
+```
+
+---
+
+## 🔧 Local Development
 
 ```bash
 # Clone
 git clone https://github.com/kunkol/apex-wealth-advisor.git
 cd apex-wealth-advisor
 
-# Setup
+# Backend
+pip install -r requirements.txt
 cp .env.template .env
 # Edit .env with your credentials
-
-# Install
-pip install -r requirements.txt
-
-# Run API
 uvicorn api.main:app --reload --port 8000
 
-# Run MCP Server (separate terminal)
-uvicorn mcp_server.mcp_api:app --reload --port 8001
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-## Environment Variables
+---
 
-See `.env.template` for all required variables.
+## 🏷️ Version History
 
-Key credentials needed:
-- `ANTHROPIC_API_KEY` - Claude API
-- `OKTA_*` - Okta tenant and agent config
-- `AUTH0_*` - Auth0 Token Vault config
+| Tag | Date | Description |
+|-----|------|-------------|
+| `production-ready-20260107` | Jan 7, 2026 | 24/24 tests passed, demo ready |
+| `pre-cleanup-fix-20260107` | Jan 7, 2026 | Before UI cleanup |
+| `working-natural-prompting-20260107` | Jan 7, 2026 | Natural language routing working |
+| `v1.0-baseline` | Dec 2025 | Initial baseline |
 
-## Deployment
+### Recovery
 
-### Render (Backend)
+```bash
+# Restore to production-ready state
+git checkout production-ready-20260107 -- frontend/src/components/PromptLibrary.tsx tools/salesforce_tools.py
+git add -A && git commit -m "RESTORE" && git push
+```
 
-1. Connect GitHub repo
-2. Create two services from `render.yaml`:
-   - `apex-wealth-api` (port 8000)
-   - `apex-wealth-mcp` (port 8001)
-3. Add environment variables
+---
 
-### Vercel (Frontend)
+## 📚 Resources
 
-1. Import from GitHub
-2. Set environment variables
-3. Deploy
+### Okta Documentation
+- [Cross-App Access (XAA)](https://developer.okta.com/docs/guides/cross-app-access)
+- [ID-JAG Token Specification](https://developer.okta.com/docs/concepts/id-jag)
 
-## Security Patterns Demonstrated
+### Auth0 Documentation
+- [Token Vault](https://auth0.com/docs/secure/tokens/token-vault)
+- [Managed Connections](https://auth0.com/docs/authenticate/identity-providers/managed-connections)
 
-| Pattern | Implementation |
-|---------|---------------|
-| XAA/ID-JAG | Okta token exchange for MCP access |
-| Token Vault | Auth0 stores Salesforce/Google tokens |
-| FGA | Client "Charlie Brown" has compliance hold |
-| CIBA Step-Up | Payments >$10K require push approval |
-| Risk Policy | Blocked recipients list |
+### Standards
+- [RFC 8693 - OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
+- [OpenID CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)
 
-## Credits
+---
 
-Based on [Indranil's Okta Agentic AI Demo](https://github.com/indranilokg/okta-agentic-ai-demo)
+## 📄 License
 
-## License
+MIT License - See [LICENSE](LICENSE) for details.
 
-MIT
+---
+
+<p align="center">
+  <strong>AI Agent Security Demo</strong><br>
+  <em>Okta + Auth0 + Anthropic Claude</em>
+</p>
