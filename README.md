@@ -149,32 +149,99 @@ A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA
 
 ---
 
-## 🎮 Demo Scenarios
+## 🔄 Sequence Diagrams
 
-### Quick Demo (5 minutes, 6 prompts)
+### Flow 1: Okta Cross-App Access (XAA) — Internal MCP
 
-| # | Prompt | What It Shows |
-|---|--------|---------------|
-| 1 | "Show me all my clients with their AUM and risk profiles." | MCP + Okta XAA |
-| 2 | "What opportunities do we have with Elena Rodriguez?" | Salesforce + Token Vault |
-| 3 | "Prepare for a client review with Elena Rodriguez..." | **5 tools, 3 systems** ⭐ |
-| 4 | "Process a $5,000 transfer from Marcus Thompson..." | HITL auto-approve |
-| 5 | "Process a $15,000 transfer from Elena Rodriguez..." | HITL step-up (CIBA) |
-| 6 | "Cancel my meeting with Elena Rodriguez..." | Cleanup |
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent as Apex AI Agent
+    participant Okta
+    participant MCP as Internal MCP Server
 
-### Full Test Suite (24 prompts across 7 phases)
+    User->>Agent: 1. Access Apex Wealth
+    Agent->>Okta: 2. Redirect to Okta SSO
+    Okta->>Okta: 3. User authenticates (MFA)
+    Okta->>Agent: 4. ID Token (user: alice@acme.com)
+    
+    Note over Agent: User authenticated to Apex
+    
+    Agent->>Okta: 5. Token Exchange Request
+    Note right of Okta: Grant: urn:ietf:params:oauth:grant-type:token-exchange<br/>Resource: apex-wealth-mcp<br/>Scope: mcp:read mcp:write
+    Okta->>Okta: 6. Policy: Can alice use Apex Agent for MCP?
+    Okta->>Agent: 7. ID-JAG Token (5 min TTL)
+    Agent->>Okta: 8. JWT Bearer Grant with ID-JAG
+    Okta->>Agent: 9. MCP Access Token (1 hour TTL)
+    
+    loop Secure API Calls
+        Agent->>MCP: 10. get_portfolio(client="Marcus Thompson")
+        MCP->>MCP: 11. Validate token + extract user context
+        MCP->>Agent: 12. Portfolio data (scoped to user)
+    end
+```
 
-All prompts available in the **📚 Prompt Library** within the app.
+### Flow 2: Auth0 Token Vault — External Services
 
-| Phase | Focus | Tests |
-|-------|-------|-------|
-| 1 | Portfolio Management (MCP) | 4 |
-| 2 | CRM Read Operations | 6 |
-| 3 | CRM Create Operations | 4 |
-| 4 | Scheduling (Calendar) | 2 |
-| 5 | Transactions (HITL) | 2 |
-| 6 | Multi-System Workflows | 2 |
-| 7 | Demo Reset/Cleanup | 4 |
+```mermaid
+sequenceDiagram
+    participant Agent as Apex AI Agent
+    participant Auth0 as Auth0 Token Vault
+    participant SF as Salesforce API
+    participant GCal as Google Calendar API
+
+    Note over Agent,GCal: Step 1: Okta Token → Vault Token
+    Agent->>Auth0: 1. Token Exchange Request
+    Note right of Auth0: grant_type: token-exchange<br/>subject_token: okta_access_token<br/>audience: vault API
+    Auth0->>Auth0: 2. Validate Okta token + lookup user
+    Auth0->>Agent: 3. Vault Access Token
+    
+    Note over Agent,GCal: Step 2: Vault Token → SaaS Tokens (Parallel)
+    
+    par Salesforce Branch
+        Agent->>Auth0: 4a. Request Salesforce token
+        Note right of Auth0: connection: salesforce
+        Auth0->>Agent: 5a. Salesforce Access Token
+        Agent->>SF: 6a. Query CRM data
+        SF->>Agent: 7a. Contacts, Opportunities
+    and Google Branch
+        Agent->>Auth0: 4b. Request Google token
+        Note right of Auth0: connection: google-oauth2
+        Auth0->>Agent: 5b. Google Access Token
+        Agent->>GCal: 6b. Calendar API call
+        GCal->>Agent: 7b. Calendar events
+    end
+```
+
+**Key Security Properties:**
+- ✅ Real SaaS credentials stored in Auth0 Token Vault, not in app
+- ✅ Agent receives scoped tokens per connection
+- ✅ User context preserved across all exchanges
+- ✅ Tokens retrieved on-demand, not persisted
+
+### Flow 3: CIBA Step-Up — Human-in-the-Loop
+
+```mermaid
+sequenceDiagram
+    participant Agent as Apex AI Agent
+    participant API as Apex API
+    participant Okta
+    participant Phone as User's Phone
+
+    Agent->>API: 1. process_payment($15,000)
+    API->>API: 2. Check policy: amount > $10K threshold
+    
+    Note over API: High-value transaction requires step-up
+    
+    API->>Okta: 3. CIBA Authentication Request
+    Note right of Okta: binding_message: "Approve $15K transfer"<br/>login_hint: alice@acme.com
+    Okta->>Phone: 4. Push notification
+    Phone->>Phone: 5. User reviews details
+    Phone->>Okta: 6. User approves
+    Okta->>API: 7. Auth complete + tokens
+    API->>API: 8. Execute transfer
+    API->>Agent: 9. Transaction confirmed
+```
 
 ---
 
@@ -307,6 +374,13 @@ git add -A && git commit -m "RESTORE" && git push
 ### Standards
 - [RFC 8693 - OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
 - [OpenID CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)
+
+---
+
+## 🙏 Credits
+
+- **Indranil Banerjee** (Okta) - [Okta Agentic AI Demo](https://github.com/indranilokg/okta-agentic-ai-demo) - MCP architecture reference
+- **Abhishek Hingnikar** (Auth0) - Token Vault integration patterns ([internal reference](https://github.com/atko-scratch/dell-ai-demo/tree/google/okta-idp-with-token-vault))
 
 ---
 
