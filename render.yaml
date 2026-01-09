@@ -62,3 +62,4 @@ services:
         sync: false
       - key: OKTA_AGENT_PRIVATE_KEY
         sync: false
+
