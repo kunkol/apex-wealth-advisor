@@ -5,7 +5,6 @@
 A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA), Auth0 Token Vault, and human-in-the-loop governance patterns.
 
 ![Demo Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Tests](https://img.shields.io/badge/Tests-24%2F24%20Passing-brightgreen)
 ![Security](https://img.shields.io/badge/Security-Enterprise%20Grade-blue)
 
 ---
@@ -17,7 +16,7 @@ A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA
 | **Agent Identity** | Okta XAA + ID-JAG tokens | Agents get identity, not just API keys |
 | **Credential Security** | Auth0 Token Vault | Zero stored secrets in application |
 | **Multi-System Access** | MCP + Salesforce + Google | Single prompt orchestrates multiple systems |
-| **Human-in-the-Loop** | CIBA step-up auth | Policy-driven approval for sensitive actions |
+| **Human-in-the-Loop** | CIBA step-up auth (planned) | Policy-driven approval for sensitive actions |
 | **Tool Routing** | Claude AI + tool descriptions | Agent auto-selects tools from context |
 
 ---
@@ -28,6 +27,11 @@ A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA
 flowchart TB
     subgraph User["👤 User"]
         FA["Financial Advisor"]
+    end
+    
+    subgraph Agent["🤖 AI Agent"]
+        Frontend["Agent Frontend<br/>(Vercel + Next.js)"]
+        Backend["Agent Backend<br/>(Render + FastAPI + Claude)"]
     end
     
     subgraph XAA["🔐 Okta Cross-App Access"]
@@ -47,7 +51,9 @@ flowchart TB
         SF["Salesforce CRM<br/>Contacts & Opportunities"]
     end
     
-    FA --> Step1
+    FA --> Frontend
+    Frontend --> Backend
+    Backend --> Step1
     Step1 -->|"subject_token"| Step2
     Step2 -->|"assertion"| Step3
     Step3 -->|"aud: apex-wealth-mcp"| MCP
@@ -57,6 +63,8 @@ flowchart TB
     Step5 -->|"connection: salesforce"| SF
     
     style FA fill:#e1f5fe
+    style Frontend fill:#e3f2fd
+    style Backend fill:#e3f2fd
     style Step1 fill:#fff3e0
     style Step2 fill:#fff3e0
     style Step3 fill:#fff3e0
@@ -199,7 +207,9 @@ sequenceDiagram
 - ✅ **Parallel SaaS access** — Single vault token unlocks multiple connections
 - ✅ **Automatic refresh** — Token Vault handles credential lifecycle
 
-### Flow 3: CIBA Step-Up — Human-in-the-Loop
+### Flow 3: CIBA Step-Up — Human-in-the-Loop (Planned)
+
+> **Note:** This flow is planned for future implementation. Currently, the demo uses simulated step-up authentication.
 
 ```mermaid
 sequenceDiagram
