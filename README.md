@@ -14,11 +14,11 @@ A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA
 
 | Capability | Implementation | Why It Matters |
 |------------|----------------|----------------|
-| **Agent Identity** | Okta XAA with ID-JAG tokens | Agents get identity, not just API keys |
+| **Agent Identity** | Okta XAA + ID-JAG tokens | Agents get identity, not just API keys |
 | **Credential Security** | Auth0 Token Vault | Zero stored secrets in application |
-| **Multi-System Access** | MCP + Salesforce + Google Calendar | Single prompt orchestrates multiple systems |
-| **Human-in-the-Loop** | CIBA step-up authentication | Policy-driven human approval for sensitive actions |
-| **Natural Language Routing** | Claude AI with tool descriptions | Agent auto-selects tools without explicit routing |
+| **Multi-System Access** | MCP + Salesforce + Google | Single prompt orchestrates multiple systems |
+| **Human-in-the-Loop** | CIBA step-up auth | Policy-driven approval for sensitive actions |
+| **Tool Routing** | Claude AI + tool descriptions | Agent auto-selects tools from context |
 
 ---
 
@@ -26,37 +26,55 @@ A demonstration of secure AI agent architecture using Okta Cross-App Access (XAA
 
 ```mermaid
 flowchart TB
-    subgraph Client
-        User[👤 User Browser]
+    subgraph User["👤 User"]
+        FA["Financial Advisor"]
     end
     
-    subgraph Frontend
-        Vercel[Vercel Frontend<br/>React + Next.js]
+    subgraph XAA["🔐 Okta Cross-App Access"]
+        Step1["Step 1: ID Token<br/>OIDC Login + MFA"]
+        Step2["Step 2: ID-JAG Token<br/>RFC 8693 Token Exchange"]
+        Step3["Step 3: Auth Server Token<br/>RFC 7523 JWT Bearer"]
     end
     
-    subgraph Backend
-        API[Render API<br/>Python/FastAPI]
+    subgraph Vault["🔑 Auth0 Token Vault"]
+        Step4["Step 4: Vault Access Token<br/>Custom Token Exchange"]
+        Step5["Step 5: Federated Token<br/>Connection-Scoped"]
     end
     
-    subgraph Identity["Identity & Security"]
-        Okta[Okta XAA<br/>ID-JAG + Token Exchange]
-        Auth0[Auth0 Token Vault<br/>Credential Management]
+    subgraph Target["🎯 Target Systems"]
+        MCP["Apex Wealth MCP<br/>Portfolio & Payments"]
+        GCal["Google Calendar<br/>Scheduling"]
+        SF["Salesforce CRM<br/>Contacts & Opportunities"]
     end
     
-    subgraph Services["Connected Services"]
-        MCP[Internal MCP Server<br/>5 tools]
-        SF[Salesforce CRM<br/>9 tools]
-        GCal[Google Calendar<br/>5 tools]
-    end
+    FA --> Step1
+    Step1 -->|"subject_token"| Step2
+    Step2 -->|"assertion"| Step3
+    Step3 -->|"aud: apex-wealth-mcp"| MCP
+    Step3 -->|"aud: auth0-vault"| Step4
+    Step4 --> Step5
+    Step5 -->|"connection: google-oauth2"| GCal
+    Step5 -->|"connection: salesforce"| SF
     
-    User --> Vercel
-    Vercel --> API
-    API --> Okta
-    API --> Auth0
-    Okta --> MCP
-    Auth0 --> SF
-    Auth0 --> GCal
+    style FA fill:#e1f5fe
+    style Step1 fill:#fff3e0
+    style Step2 fill:#fff3e0
+    style Step3 fill:#fff3e0
+    style Step4 fill:#f3e5f5
+    style Step5 fill:#f3e5f5
+    style MCP fill:#e8f5e9
+    style GCal fill:#e8f5e9
+    style SF fill:#e8f5e9
 ```
+
+**Token Exchange Flow:**
+| Step | Token | Standard | Purpose |
+|------|-------|----------|---------|
+| 1 | ID Token | OIDC | User authentication via Okta SSO + MFA |
+| 2 | ID-JAG | RFC 8693 | Agent identity token bound to user session |
+| 3 | Auth Server Token | RFC 7523 | Scoped access token for target audience |
+| 4 | Vault Access Token | Custom Token Exchange | Auth0 credential broker access |
+| 5 | Federated Token | Auth0 Token Vault | SaaS-specific OAuth tokens |
 
 ---
 
@@ -101,105 +119,126 @@ flowchart TB
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Agent as Apex AI Agent
-    participant Okta
-    participant MCP as Internal MCP Server
-
-    User->>Agent: 1. Access Apex Wealth
-    Agent->>Okta: 2. Redirect to Okta SSO
-    Okta->>Okta: 3. User authenticates (MFA)
-    Okta->>Agent: 4. ID Token (user: alice@acme.com)
+    autonumber
     
-    Note over Agent: User authenticated to Apex
+    participant User as 👤 User
+    participant Agent as 🤖 Apex Agent
+    participant Okta as 🔐 Okta
+    participant MCP as 📊 MCP Server
     
-    Agent->>Okta: 5. Token Exchange Request
-    Note right of Okta: Grant: urn:ietf:params:oauth:grant-type:token-exchange<br/>Resource: apex-wealth-mcp<br/>Scope: mcp:read mcp:write
-    Okta->>Okta: 6. Policy: Can alice use Apex Agent for MCP?
-    Okta->>Agent: 7. ID-JAG Token (5 min TTL)
-    Agent->>Okta: 8. JWT Bearer Grant with ID-JAG
-    Okta->>Agent: 9. MCP Access Token (1 hour TTL)
+    rect rgb(227, 242, 253)
+    Note over User,Okta: Authentication Phase
+    User->>Agent: Access Apex Wealth Advisor
+    Agent->>Okta: Redirect to Okta SSO
+    Okta->>Okta: User authenticates + MFA
+    Okta-->>Agent: ID Token (sub: alice@acme.com)
+    end
     
-    loop Secure API Calls
-        Agent->>MCP: 10. get_portfolio(client="Marcus Thompson")
-        MCP->>MCP: 11. Validate token + extract user context
-        MCP->>Agent: 12. Portfolio data (scoped to user)
+    rect rgb(255, 243, 224)
+    Note over Agent,Okta: Token Exchange Phase (RFC 8693)
+    Agent->>Okta: Token Exchange Request
+    Note right of Okta: grant_type: urn:ietf:params:oauth:<br/>grant-type:token-exchange<br/>subject_token: id_token<br/>resource: apex-wealth-mcp
+    Okta->>Okta: Validate policy + agent binding
+    Okta-->>Agent: ID-JAG Token (5 min TTL)
+    end
+    
+    rect rgb(232, 245, 233)
+    Note over Agent,MCP: API Access Phase (RFC 7523)
+    Agent->>Okta: JWT Bearer Grant (assertion: id-jag)
+    Okta-->>Agent: MCP Access Token (1 hour TTL)
+    Agent->>MCP: get_portfolio(client="Marcus Thompson")
+    MCP->>MCP: Validate token + extract user context
+    MCP-->>Agent: Portfolio data (user-scoped)
     end
 ```
 
-### Flow 2: Auth0 Token Vault — External Services
-
-```
-                                        ┌────────────────┐     ┌────────────────┐
-                                   ┌───▶│ Salesforce Token│────▶│ Salesforce API │
-┌────────────┐     ┌────────────┐  │    └────────────────┘     └────────────────┘
-│   Okta     │────▶│   Vault    │──┤
-│   Token    │     │   Token    │  │    ┌────────────────┐     ┌────────────────┐
-└────────────┘     └────────────┘  └───▶│  Google Token  │────▶│  Google Calendar│
-                         │              └────────────────┘     └────────────────┘
-                         │
-                  No Credentials
-                  Stored in App
-```
+### Flow 2: Auth0 Token Vault — External SaaS
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Apex AI Agent
-    participant Auth0 as Auth0 Token Vault
-    participant SF as Salesforce API
-    participant GCal as Google Calendar API
-
-    rect rgb(240, 248, 255)
-    Note over Agent,Auth0: Step 1: Okta Token → Vault Token
-    Agent->>Auth0: 1. Token Exchange (subject_token: okta_token)
-    Auth0->>Auth0: 2. Validate + lookup user
-    Auth0->>Agent: 3. Vault Access Token
+    autonumber
+    
+    participant Agent as 🤖 Apex Agent
+    participant Okta as 🔐 Okta
+    participant Vault as 🔑 Auth0 Vault
+    participant SF as ☁️ Salesforce
+    participant GCal as 📅 Google Calendar
+    
+    rect rgb(243, 229, 245)
+    Note over Agent,Vault: Step 1: Get Vault Access Token
+    Agent->>Okta: Request token (aud: auth0-vault)
+    Okta-->>Agent: Auth Server Token
+    Agent->>Vault: Token Exchange Request
+    Note right of Vault: grant_type: urn:ietf:params:oauth:<br/>grant-type:token-exchange<br/>subject_token_type: okta_token
+    Vault->>Vault: Validate Okta token + lookup user
+    Vault-->>Agent: Vault Access Token
     end
-
-    rect rgb(255, 248, 240)
-    Note over Agent,GCal: Step 2: Vault Token → SaaS Tokens (Parallel)
-    par Salesforce
-        Agent->>Auth0: 4a. Get SF token (connection: salesforce)
-        Auth0->>Agent: 5a. Salesforce Token
-        Agent->>SF: 6a. CRM API calls
-        SF->>Agent: 7a. Data
-    and Google
-        Agent->>Auth0: 4b. Get Google token (connection: google-oauth2)
-        Auth0->>Agent: 5b. Google Token
-        Agent->>GCal: 6b. Calendar API calls
-        GCal->>Agent: 7b. Events
+    
+    rect rgb(232, 245, 233)
+    Note over Agent,GCal: Step 2: Get SaaS Tokens (Parallel)
+    
+    par Salesforce Access
+        Agent->>Vault: Get token (connection: salesforce)
+        Note right of Vault: User's stored SF credential<br/>retrieved from vault
+        Vault-->>Agent: Salesforce Access Token
+        Agent->>SF: Query contacts & opportunities
+        SF-->>Agent: CRM data
+    and Google Access
+        Agent->>Vault: Get token (connection: google-oauth2)
+        Note right of Vault: User's stored Google credential<br/>retrieved from vault
+        Vault-->>Agent: Google Access Token
+        Agent->>GCal: Create/list calendar events
+        GCal-->>Agent: Calendar data
     end
     end
 ```
 
-**Key Points:**
-- ✅ Real credentials stored in Token Vault, not in app
-- ✅ Parallel access to multiple SaaS services
-- ✅ User context preserved across exchanges
+**Key Security Properties:**
+- ✅ **No stored credentials** — Real OAuth tokens live in Token Vault, not in app
+- ✅ **User-scoped access** — Agent acts on behalf of authenticated user
+- ✅ **Parallel SaaS access** — Single vault token unlocks multiple connections
+- ✅ **Automatic refresh** — Token Vault handles credential lifecycle
 
 ### Flow 3: CIBA Step-Up — Human-in-the-Loop
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Apex AI Agent
-    participant API as Apex API
-    participant Okta
-    participant Phone as User's Phone
-
-    Agent->>API: 1. process_payment($15,000)
-    API->>API: 2. Check policy: amount > $10K threshold
+    autonumber
     
-    Note over API: High-value transaction requires step-up
+    participant Agent as 🤖 Apex Agent
+    participant API as ⚙️ Apex API
+    participant Okta as 🔐 Okta
+    participant Phone as 📱 User Phone
     
-    API->>Okta: 3. CIBA Authentication Request
-    Note right of Okta: binding_message: "Approve $15K transfer"<br/>login_hint: alice@acme.com
-    Okta->>Phone: 4. Push notification
-    Phone->>Phone: 5. User reviews details
-    Phone->>Okta: 6. User approves
-    Okta->>API: 7. Auth complete + tokens
-    API->>API: 8. Execute transfer
-    API->>Agent: 9. Transaction confirmed
+    rect rgb(255, 235, 238)
+    Note over Agent,API: Transaction Request
+    Agent->>API: process_payment($15,000)
+    API->>API: Policy check: amount > $10K threshold
+    Note over API: ⚠️ High-value transaction<br/>requires step-up auth
+    end
+    
+    rect rgb(255, 243, 224)
+    Note over API,Phone: CIBA Authentication (OpenID Connect)
+    API->>Okta: POST /bc-authorize
+    Note right of Okta: binding_message: "Approve $15K transfer<br/>from Marcus Thompson"<br/>login_hint: alice@acme.com<br/>scope: openid okta.operation.approve
+    Okta->>Phone: Push notification
+    Phone->>Phone: User reviews transaction details
+    Phone->>Okta: User approves ✓
+    Okta-->>API: Authentication complete + tokens
+    end
+    
+    rect rgb(232, 245, 233)
+    Note over API,Agent: Transaction Execution
+    API->>API: Execute transfer with audit log
+    API-->>Agent: Transaction confirmed (TXN-xxx)
+    end
 ```
+
+**HITL Governance:**
+- ✅ **Policy-driven** — Thresholds configured per transaction type
+- ✅ **Out-of-band approval** — Push notification to user's device
+- ✅ **Binding message** — User sees exactly what they're approving
+- ✅ **Audit trail** — Every approval/denial logged with timestamp
 
 ---
 
@@ -263,6 +302,7 @@ apex-wealth-advisor/
 
 ### Standards
 - [RFC 8693 - OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
+- [RFC 7523 - JWT Bearer Grant](https://datatracker.ietf.org/doc/html/rfc7523)
 - [OpenID CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)
 
 ---
