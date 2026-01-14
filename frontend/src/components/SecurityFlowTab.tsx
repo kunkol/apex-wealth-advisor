@@ -787,8 +787,36 @@ export default function SecurityFlowTab({
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Active Flow Indicator - Shows which flow is being used for current request */}
+            {toolsCalled.length > 0 && (
+              <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">⚡</span>
+                  <span className="text-sm font-semibold text-white">Active Security Flow</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
+                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium border border-emerald-500/30">
+                      ✓ Okta XAA → MCP Server
+                    </span>
+                  )}
+                  {usedCalendar && (
+                    <span className="px-2 py-1 bg-rose-500/20 text-rose-400 rounded-full text-xs font-medium border border-rose-500/30">
+                      ✓ Token Vault → Google Calendar
+                    </span>
+                  )}
+                  {usedSalesforce && (
+                    <span className="px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs font-medium border border-sky-500/30">
+                      ✓ Token Vault → Salesforce
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Step 1: Okta ID Token */}
-            <div>
+            {/* Dim if ONLY Token Vault tools were used (no MCP tools) */}
+            <div className={`${(usedCalendar || usedSalesforce) && !toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-mono px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Step 1</span>
                 <span className="text-sm text-slate-400">User Authentication</span>
@@ -855,7 +883,8 @@ export default function SecurityFlowTab({
             </div>
 
             {/* Step 2: ID-JAG Token */}
-            <div>
+            {/* Dim if ONLY Token Vault tools were used (no MCP tools) */}
+            <div className={`${(usedCalendar || usedSalesforce) && !toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded">Step 2</span>
                 <span className="text-sm text-slate-400">XAA Exchange (Identity Assertion)</span>
@@ -929,7 +958,8 @@ export default function SecurityFlowTab({
             </div>
 
             {/* Step 3: Auth Server Token */}
-            <div>
+            {/* Dim if ONLY Token Vault tools were used (no MCP tools) */}
+            <div className={`${(usedCalendar || usedSalesforce) && !toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-mono px-2 py-0.5 bg-green-500/20 text-green-400 rounded">Step 3</span>
                 <span className="text-sm text-slate-400">Access Grant</span>

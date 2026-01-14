@@ -15,6 +15,8 @@ import os
 import json
 import re
 from typing import Dict, Any, List, Optional
+from datetime import datetime
+import pytz
 import anthropic
 
 logger = logging.getLogger(__name__)
@@ -289,11 +291,17 @@ When security controls block an action, explain why clearly and suggest alternat
             
             all_tools = self._convert_tools_to_claude(mcp_tool_list, calendar_tool_list, salesforce_tool_list)
             
+            # Inject current date/time in PST for accurate date handling
+            pst = pytz.timezone('America/Los_Angeles')
+            now_pst = datetime.now(pst)
+            date_context = f"\n\n## Current Date/Time\nToday is {now_pst.strftime('%A, %B %d, %Y')}. Current time is {now_pst.strftime('%I:%M %p')} PST."
+            system_with_date = self.system_prompt + date_context
+            
             # Initial Claude call
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
-                system=self.system_prompt,
+                system=system_with_date,
                 messages=messages,
                 tools=all_tools if all_tools else None
             )
@@ -375,7 +383,7 @@ When security controls block an action, explain why clearly and suggest alternat
                 response = self.client.messages.create(
                     model=self.model,
                     max_tokens=2048,
-                    system=self.system_prompt,
+                    system=system_with_date,
                     messages=messages,
                     tools=all_tools if all_tools else None
                 )
