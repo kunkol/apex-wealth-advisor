@@ -631,7 +631,9 @@ function LogEntry({ entry, xaaInfo, tokenVaultInfo, session }: { entry: AuditEnt
   // Decode tokens to get identity info
   const idJagDecoded = xaaInfo?.id_jag_token ? decodeJWT(xaaInfo.id_jag_token) : null;
   const mcpDecoded = xaaInfo?.mcp_token ? decodeJWT(xaaInfo.mcp_token) : null;
-  const vaultDecoded = tokenVaultInfo?.vault_token ? decodeJWT(tokenVaultInfo.vault_token) : null;
+  // Get vault token from nested structure (multi-auth-server) or legacy
+  const vaultToken = tokenVaultInfo?.google?.vault_token || tokenVaultInfo?.salesforce?.vault_token || tokenVaultInfo?.vault_token;
+  const vaultDecoded = vaultToken ? decodeJWT(vaultToken) : null;
   
   // Extract identity information
   const userEmail = mcpDecoded?.sub || session?.user?.email || 'Unknown User';
@@ -1107,7 +1109,13 @@ export default function SecurityFlowTab({
               </div>
               <TokenCard 
                 title="Vault Access Token (CTE)" 
-                token={tokenVaultInfo?.vault_token} 
+                token={
+                  // Multi-auth-server: Get vault token from active flow
+                  usedSalesforce && tokenVaultInfo?.salesforce?.vault_token ? tokenVaultInfo.salesforce.vault_token :
+                  usedCalendar && tokenVaultInfo?.google?.vault_token ? tokenVaultInfo.google.vault_token :
+                  // Fallback to legacy structure
+                  tokenVaultInfo?.vault_token
+                } 
                 color="border-purple-500/30 bg-purple-900/10" 
                 stepNumber={4}
                 icon="🏦"
@@ -1117,7 +1125,7 @@ export default function SecurityFlowTab({
                   <p className="text-sm text-amber-400">💡 "User gets access to the secure token vault"</p>
                 </div>
                 {/* CTE Flow */}
-                {tokenVaultInfo?.vault_token && (
+                {(tokenVaultInfo?.vault_token || tokenVaultInfo?.google?.vault_token || tokenVaultInfo?.salesforce?.vault_token) && (
                   <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-900/10 mb-2">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-purple-400 text-sm">●</span>
@@ -1163,7 +1171,7 @@ export default function SecurityFlowTab({
                   </div>
                 )}
                 {/* CTE Info */}
-                {tokenVaultInfo?.vault_token && (
+                {(tokenVaultInfo?.vault_token || tokenVaultInfo?.google?.vault_token || tokenVaultInfo?.salesforce?.vault_token) && (
                   <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
                     <div className="flex items-center gap-2 text-[10px]">
                       <span className="text-slate-500">Audience:</span>
