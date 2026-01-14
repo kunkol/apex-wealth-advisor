@@ -250,7 +250,8 @@ class OktaCrossAppAccessManager:
             auth_server_id=self.AUTH_SERVER_IDS["google"],
             audience=self.AUDIENCES["google"],
             sdk_instance=self.sdk_google,
-            service_name="Google"
+            service_name="Google",
+            scope="openid"  # Required scope for token exchange
         )
     
     async def exchange_id_to_salesforce_token(self, id_token: str) -> Optional[Dict[str, Any]]:
@@ -265,7 +266,8 @@ class OktaCrossAppAccessManager:
             auth_server_id=self.AUTH_SERVER_IDS["salesforce"],
             audience=self.AUDIENCES["salesforce"],
             sdk_instance=self.sdk_salesforce,
-            service_name="Salesforce"
+            service_name="Salesforce",
+            scope="openid"  # Required scope for token exchange
         )
     
     async def verify_mcp_token(self, access_token: str) -> Optional[Dict[str, Any]]:
