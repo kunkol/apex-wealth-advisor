@@ -787,6 +787,33 @@ export default function SecurityFlowTab({
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Active Flow Indicator - Shows which flow is being used for current request */}
+            {toolsCalled.length > 0 && (
+              <div className="mb-2 p-3 rounded-lg bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">⚡</span>
+                  <span className="text-sm font-semibold text-white">Active Security Flow</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
+                    <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium border border-emerald-500/30">
+                      ✓ Okta XAA → MCP Server
+                    </span>
+                  )}
+                  {usedCalendar && (
+                    <span className="px-2 py-1 bg-rose-500/20 text-rose-400 rounded-full text-xs font-medium border border-rose-500/30">
+                      ✓ Token Vault → Google Calendar
+                    </span>
+                  )}
+                  {usedSalesforce && (
+                    <span className="px-2 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs font-medium border border-sky-500/30">
+                      ✓ Token Vault → Salesforce
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Step 1: Okta ID Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -863,13 +890,7 @@ export default function SecurityFlowTab({
               </div>
               <TokenCard 
                 title="ID-JAG Token" 
-                token={
-                  // Multi-auth-server: Get ID-JAG from active flow
-                  usedSalesforce && xaaInfo?.salesforce?.id_jag_token ? xaaInfo.salesforce.id_jag_token :
-                  usedCalendar && xaaInfo?.google?.id_jag_token ? xaaInfo.google.id_jag_token :
-                  // Fallback to MCP or legacy structure
-                  xaaInfo?.mcp?.id_jag_token || xaaInfo?.id_jag_token
-                } 
+                token={xaaInfo?.id_jag_token} 
                 color="border-indigo-500/30 bg-indigo-900/10" 
                 stepNumber={2}
                 icon="🔑"
@@ -879,7 +900,7 @@ export default function SecurityFlowTab({
                   <p className="text-sm text-amber-400">💡 "Okta vouches for the user to other systems"</p>
                 </div>
                 {/* ID-JAG Secure Flow - Inside TokenCard expansion */}
-                {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token || xaaInfo?.mcp?.id_jag_token || xaaInfo?.google?.id_jag_token || xaaInfo?.salesforce?.id_jag_token) && (
+                {(xaaInfo?.token_obtained || xaaInfo?.id_jag_token) && (
                   <div className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-900/10">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-cyan-400 text-xs">●</span>
@@ -940,31 +961,11 @@ export default function SecurityFlowTab({
                 <span className="text-sm font-mono px-2 py-0.5 bg-green-500/20 text-green-400 rounded">Step 3</span>
                 <span className="text-sm text-slate-400">Access Grant</span>
                 <span className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded">RFC 7523</span>
-                {/* Active Security Flow Indicator */}
-                {(usedCalendar || usedSalesforce || toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t))) && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                    usedSalesforce ? 'bg-sky-500/20 text-sky-400' :
-                    usedCalendar ? 'bg-rose-500/20 text-rose-400' :
-                    'bg-emerald-500/20 text-emerald-400'
-                  }`}>
-                    {usedSalesforce ? '☁️ Salesforce Flow' : usedCalendar ? '📅 Google Flow' : '🏢 MCP Flow'}
-                  </span>
-                )}
               </div>
               <TokenCard 
                 title="Auth Server Token" 
-                token={
-                  // Multi-auth-server: Show token for active flow
-                  usedSalesforce && xaaInfo?.salesforce?.access_token ? xaaInfo.salesforce.access_token :
-                  usedCalendar && xaaInfo?.google?.access_token ? xaaInfo.google.access_token :
-                  // Fallback to MCP or legacy structure
-                  xaaInfo?.mcp?.access_token || xaaInfo?.mcp_token
-                } 
-                color={`border-green-500/30 ${
-                  usedSalesforce ? 'bg-sky-900/10' :
-                  usedCalendar ? 'bg-rose-900/10' :
-                  'bg-green-900/10'
-                }`} 
+                token={xaaInfo?.mcp_token} 
+                color="border-green-500/30 bg-green-900/10" 
                 stepNumber={3}
                 icon="🎫"
               >
@@ -973,7 +974,7 @@ export default function SecurityFlowTab({
                   <p className="text-sm text-amber-400">💡 "User gets permission to access a specific resource"</p>
                 </div>
                 {/* JWT Bearer Grant Flow */}
-                {(xaaInfo?.mcp?.access_token || xaaInfo?.mcp_token || xaaInfo?.google?.access_token || xaaInfo?.salesforce?.access_token) && (
+                {xaaInfo?.mcp_token && (
                   <div className="p-3 rounded-lg border border-green-500/30 bg-green-900/10 mb-2">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-green-400 text-sm">●</span>
@@ -1018,29 +1019,23 @@ export default function SecurityFlowTab({
                     </div>
                   </div>
                 )}
-                {/* Audience info - Show audiences from API response */}
-                {(xaaInfo?.mcp?.access_token || xaaInfo?.mcp_token || xaaInfo?.google?.access_token || xaaInfo?.salesforce?.access_token) && (
+                {/* Audience info - Show ALL audiences based on tools called */}
+                {xaaInfo?.mcp_token && (
                   <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
                     <div className="flex items-start gap-2 text-[10px]">
                       <span className="text-slate-500 pt-0.5">Audience:</span>
                       <div className="flex flex-wrap gap-1">
-                        {/* MCP audience - from API or fallback */}
+                        {/* MCP audience - if any MCP tools were used */}
                         {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
-                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">
-                            {xaaInfo?.mcp?.audience || 'apex-wealth-mcp'}
-                          </span>
+                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">apex-wealth-mcp</span>
                         )}
-                        {/* Salesforce audience - from API */}
+                        {/* Salesforce audience */}
                         {usedSalesforce && (
-                          <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded font-mono">
-                            {xaaInfo?.salesforce?.audience || 'https://salesforce.com'}
-                          </span>
+                          <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded font-mono">https://salesforce.com</span>
                         )}
-                        {/* Google audience - from API */}
+                        {/* Google audience */}
                         {usedCalendar && (
-                          <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded font-mono">
-                            {xaaInfo?.google?.audience || 'https://google.com'}
-                          </span>
+                          <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded font-mono">https://google.com</span>
                         )}
                         {/* Fallback if no tools called */}
                         {toolsCalled.length === 0 && (
@@ -1048,25 +1043,6 @@ export default function SecurityFlowTab({
                         )}
                       </div>
                     </div>
-                    {/* Show auth server ID if available */}
-                    {(usedSalesforce && xaaInfo?.salesforce?.auth_server_id) && (
-                      <div className="flex items-center gap-2 text-[10px] mt-1">
-                        <span className="text-slate-500">Auth Server:</span>
-                        <span className="text-sky-400 font-mono">{xaaInfo.salesforce.auth_server_id}</span>
-                      </div>
-                    )}
-                    {(usedCalendar && xaaInfo?.google?.auth_server_id) && (
-                      <div className="flex items-center gap-2 text-[10px] mt-1">
-                        <span className="text-slate-500">Auth Server:</span>
-                        <span className="text-rose-400 font-mono">{xaaInfo.google.auth_server_id}</span>
-                      </div>
-                    )}
-                    {(!usedSalesforce && !usedCalendar && xaaInfo?.mcp?.auth_server_id) && (
-                      <div className="flex items-center gap-2 text-[10px] mt-1">
-                        <span className="text-slate-500">Auth Server:</span>
-                        <span className="text-emerald-400 font-mono">{xaaInfo.mcp.auth_server_id}</span>
-                      </div>
-                    )}
                     <div className="flex items-center gap-2 text-[10px] mt-1">
                       <span className="text-slate-500">Grant:</span>
                       <span className="text-slate-300">JWT Bearer (urn:ietf:params:oauth:grant-type:jwt-bearer)</span>
@@ -1076,7 +1052,7 @@ export default function SecurityFlowTab({
               </TokenCard>
               
               {/* Divergence Point */}
-              {(xaaInfo?.mcp?.access_token || xaaInfo?.mcp_token || xaaInfo?.google?.access_token || xaaInfo?.salesforce?.access_token) && (
+              {xaaInfo?.mcp_token && (
                 <div className="mt-2 p-2 rounded-lg bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/30">
                   <div className="flex items-center gap-2">
                     <span className="text-purple-400">⚡</span>
