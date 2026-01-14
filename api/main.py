@@ -2,10 +2,12 @@
 Apex Wealth Advisor - Backend API
 FastAPI backend with Claude AI, Okta XAA, and Auth0 Token Vault integration.
 
+Version: 2.0 - Multi-Auth-Server Support
+
 Architecture:
-- Internal MCP (Portfolio): Okta XAA (ID-JAG token exchange)
-- Google Calendar: Auth0 Token Vault
-- Salesforce CRM: Auth0 Token Vault
+- Internal MCP (Portfolio): Okta XAA via MCP Auth Server (aud: apex-wealth-mcp)
+- Google Calendar: Okta XAA via Google Auth Server (aud: https://google.com) → Auth0 Token Vault
+- Salesforce CRM: Okta XAA via Salesforce Auth Server (aud: https://salesforce.com) → Auth0 Token Vault
 """
 
 from fastapi import FastAPI, HTTPException, Request
@@ -45,7 +47,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 app = FastAPI(
     title="Apex Wealth Advisor API",
     description="AI-powered wealth advisory platform with Okta XAA and Auth0 Token Vault",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 # CORS - Allow frontend origins
@@ -71,7 +73,7 @@ app.add_middleware(
 # INITIALIZE SERVICES
 # ============================================================================
 
-# Okta XAA Manager - for Internal MCP access
+# Okta XAA Manager - supports MCP, Google, and Salesforce auth servers
 xaa_manager = OktaCrossAppAccessManager()
 logger.info(f"[INIT] Okta XAA configured: {xaa_manager.is_configured()}")
 
@@ -128,12 +130,12 @@ class ChatResponse(BaseModel):
 async def root():
     return {
         "service": "Apex Wealth Advisor API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "status": "running",
         "security_flows": {
-            "internal_mcp": "Okta XAA (ID-JAG)",
-            "google_calendar": "Auth0 Token Vault",
-            "salesforce": "Auth0 Token Vault"
+            "internal_mcp": "Okta XAA via MCP Auth Server (aud: apex-wealth-mcp)",
+            "google_calendar": "Okta XAA via Google Auth Server (aud: https://google.com) → Auth0 Token Vault",
+            "salesforce": "Okta XAA via Salesforce Auth Server (aud: https://salesforce.com) → Auth0 Token Vault"
         }
     }
 
@@ -159,11 +161,13 @@ async def chat(request: ChatRequest, http_request: Request):
     """
     Main chat endpoint - processes messages through Claude with tool access.
     
-    Security Flow:
+    Security Flow (v2.0 - Per-Service Auth Servers):
     1. Validate user's ID token
-    2. Exchange ID token for MCP token (Okta XAA) for internal tools
-    3. Exchange for Auth0 vault token, then get Google/Salesforce tokens (Token Vault)
-    4. Route tool calls to appropriate backend
+    2. Exchange ID token for service-specific auth server tokens:
+       - MCP tools: ID → ID-JAG → MCP Auth Server Token (aud: apex-wealth-mcp)
+       - Google: ID → ID-JAG → Google Auth Server Token (aud: https://google.com) → Auth0 CTE → Google Token
+       - Salesforce: ID → ID-JAG → SF Auth Server Token (aud: https://salesforce.com) → Auth0 CTE → SF Token
+    3. Route tool calls to appropriate backend with correct token
     """
     try:
         # Extract tokens from headers
@@ -182,39 +186,63 @@ async def chat(request: ChatRequest, http_request: Request):
                 logger.info(f"[CHAT] User validated: {user_info.get('email')}")
         
         # ================================================================
-        # STEP 2: Okta XAA - Get MCP token for internal tools
+        # STEP 2a: Okta XAA - Get MCP token for internal tools
+        # Uses MCP Auth Server (aud: apex-wealth-mcp)
         # ================================================================
         mcp_token_info = None
         if id_token and xaa_manager.is_configured():
             mcp_token_info = await xaa_manager.exchange_id_to_mcp_token(id_token)
             if mcp_token_info:
-                logger.info(f"[CHAT] XAA: MCP token obtained, expires_in={mcp_token_info.get('expires_in')}s")
+                logger.info(f"[CHAT] XAA-MCP: Token obtained (aud: {mcp_token_info.get('audience')}), expires_in={mcp_token_info.get('expires_in')}s")
         
         # ================================================================
-        # STEP 3: Auth0 Token Vault - Get external tokens
+        # STEP 2b: Okta XAA - Get Google token for Calendar
+        # Uses Google Auth Server (aud: https://google.com)
         # ================================================================
-        vault_token = None
+        google_auth_server_token_info = None
+        vault_token_google = None
         google_token_info = None
+        
+        if id_token and xaa_manager.is_configured() and token_vault.is_configured():
+            google_auth_server_token_info = await xaa_manager.exchange_id_to_google_token(id_token)
+            if google_auth_server_token_info:
+                logger.info(f"[CHAT] XAA-Google: Token obtained (aud: {google_auth_server_token_info.get('audience')})")
+                
+                # Exchange Google Auth Server token for Auth0 Vault token
+                vault_token_google = await token_vault.exchange_okta_token_for_vault_token(
+                    google_auth_server_token_info.get("access_token")
+                )
+                if vault_token_google:
+                    # Get actual Google OAuth token from vault
+                    google_token_info = await token_vault.get_google_token(vault_token_google)
+                    if google_token_info:
+                        logger.info(f"[CHAT] Token Vault: Google OAuth token obtained")
+        
+        # ================================================================
+        # STEP 2c: Okta XAA - Get Salesforce token for CRM
+        # Uses Salesforce Auth Server (aud: https://salesforce.com)
+        # ================================================================
+        salesforce_auth_server_token_info = None
+        vault_token_salesforce = None
         salesforce_token_info = None
         
-        if access_token and token_vault.is_configured():
-            # First exchange Okta token for Auth0 vault token
-            vault_token = await token_vault.exchange_okta_token_for_vault_token(
-                mcp_token_info.get("access_token") if mcp_token_info else access_token
-            )
-            if vault_token:
-                # Get Google token from vault
-                google_token_info = await token_vault.get_google_token(vault_token)
-                if google_token_info:
-                    logger.info(f"[CHAT] Token Vault: Google token obtained")
+        if id_token and xaa_manager.is_configured() and token_vault.is_configured():
+            salesforce_auth_server_token_info = await xaa_manager.exchange_id_to_salesforce_token(id_token)
+            if salesforce_auth_server_token_info:
+                logger.info(f"[CHAT] XAA-Salesforce: Token obtained (aud: {salesforce_auth_server_token_info.get('audience')})")
                 
-                # Get Salesforce token from vault
-                salesforce_token_info = await token_vault.get_salesforce_token(vault_token)
-                if salesforce_token_info:
-                    logger.info(f"[CHAT] Token Vault: Salesforce token obtained")
+                # Exchange Salesforce Auth Server token for Auth0 Vault token
+                vault_token_salesforce = await token_vault.exchange_okta_token_for_vault_token(
+                    salesforce_auth_server_token_info.get("access_token")
+                )
+                if vault_token_salesforce:
+                    # Get actual Salesforce OAuth token from vault
+                    salesforce_token_info = await token_vault.get_salesforce_token(vault_token_salesforce)
+                    if salesforce_token_info:
+                        logger.info(f"[CHAT] Token Vault: Salesforce OAuth token obtained")
         
         # ================================================================
-        # STEP 4: Process through Claude with tools
+        # STEP 3: Process through Claude with tools
         # ================================================================
         last_message = request.messages[-1].content if request.messages else ""
         
@@ -240,29 +268,58 @@ async def chat(request: ChatRequest, http_request: Request):
             security_info=response.get("security_info"),
             xaa_info={
                 "configured": xaa_manager.is_configured(),
+                "mcp": {
+                    "token_obtained": bool(mcp_token_info),
+                    "id_jag_token": mcp_token_info.get("id_jag_token") if mcp_token_info else None,
+                    "access_token": mcp_token_info.get("access_token") if mcp_token_info else None,
+                    "audience": mcp_token_info.get("audience") if mcp_token_info else "apex-wealth-mcp",
+                    "auth_server_id": mcp_token_info.get("auth_server_id") if mcp_token_info else None,
+                    "expires_in": mcp_token_info.get("expires_in") if mcp_token_info else None,
+                    "scope": mcp_token_info.get("scope") if mcp_token_info else None
+                } if mcp_token_info else None,
+                "google": {
+                    "token_obtained": bool(google_auth_server_token_info),
+                    "id_jag_token": google_auth_server_token_info.get("id_jag_token") if google_auth_server_token_info else None,
+                    "access_token": google_auth_server_token_info.get("access_token") if google_auth_server_token_info else None,
+                    "audience": google_auth_server_token_info.get("audience") if google_auth_server_token_info else "https://google.com",
+                    "auth_server_id": google_auth_server_token_info.get("auth_server_id") if google_auth_server_token_info else None,
+                    "expires_in": google_auth_server_token_info.get("expires_in") if google_auth_server_token_info else None
+                } if google_auth_server_token_info else None,
+                "salesforce": {
+                    "token_obtained": bool(salesforce_auth_server_token_info),
+                    "id_jag_token": salesforce_auth_server_token_info.get("id_jag_token") if salesforce_auth_server_token_info else None,
+                    "access_token": salesforce_auth_server_token_info.get("access_token") if salesforce_auth_server_token_info else None,
+                    "audience": salesforce_auth_server_token_info.get("audience") if salesforce_auth_server_token_info else "https://salesforce.com",
+                    "auth_server_id": salesforce_auth_server_token_info.get("auth_server_id") if salesforce_auth_server_token_info else None,
+                    "expires_in": salesforce_auth_server_token_info.get("expires_in") if salesforce_auth_server_token_info else None
+                } if salesforce_auth_server_token_info else None,
+                # Legacy fields for backward compatibility
                 "token_obtained": bool(mcp_token_info),
                 "id_jag_token": mcp_token_info.get("id_jag_token") if mcp_token_info else None,
                 "mcp_token": mcp_token_info.get("access_token") if mcp_token_info else None,
                 "id_jag_expires_in": 300,
                 "mcp_token_expires_in": mcp_token_info.get("expires_in") if mcp_token_info else None,
                 "scope": mcp_token_info.get("scope") if mcp_token_info else None
-            } if mcp_token_info or xaa_manager.is_configured() else None,
+            } if mcp_token_info or google_auth_server_token_info or salesforce_auth_server_token_info or xaa_manager.is_configured() else None,
             token_vault_info={
                 "configured": token_vault.is_configured(),
-                "vault_token": vault_token if vault_token else None,
                 "google": {
                     "connected": bool(google_token_info),
+                    "vault_token": vault_token_google if vault_token_google else None,
                     "token": google_token_info.get("access_token") if google_token_info else None,
                     "expires_in": google_token_info.get("expires_in") if google_token_info else None,
                     "connection": "google-oauth2"
-                } if google_token_info else None,
+                } if google_token_info or vault_token_google else None,
                 "salesforce": {
                     "connected": bool(salesforce_token_info),
+                    "vault_token": vault_token_salesforce if vault_token_salesforce else None,
                     "token": salesforce_token_info.get("access_token") if salesforce_token_info else None,
                     "expires_in": salesforce_token_info.get("expires_in") if salesforce_token_info else None,
                     "connection": "salesforce"
-                } if salesforce_token_info else None
-            } if vault_token or token_vault.is_configured() else None
+                } if salesforce_token_info or vault_token_salesforce else None,
+                # Legacy field
+                "vault_token": vault_token_google or vault_token_salesforce
+            } if vault_token_google or vault_token_salesforce or token_vault.is_configured() else None
         )
         
     except Exception as e:
@@ -278,17 +335,17 @@ async def list_tools():
     
     return {
         "internal_mcp": {
-            "security": "Okta XAA (ID-JAG)",
+            "security": "Okta XAA via MCP Auth Server (aud: apex-wealth-mcp)",
             "tools": mcp_tools,
             "count": len(mcp_tools)
         },
         "google_calendar": {
-            "security": "Auth0 Token Vault",
+            "security": "Okta XAA via Google Auth Server (aud: https://google.com) → Auth0 Token Vault",
             "tools": cal_tools,
             "count": len(cal_tools)
         },
         "salesforce": {
-            "security": "Auth0 Token Vault",
+            "security": "Okta XAA via Salesforce Auth Server (aud: https://salesforce.com) → Auth0 Token Vault",
             "tools": ["search_salesforce_contacts", "get_contact_opportunities", "get_sales_pipeline", 
                      "get_high_value_accounts", "create_salesforce_task", "create_salesforce_note",
                      "get_pipeline_value", "update_opportunity_stage"],
@@ -311,11 +368,11 @@ async def call_tool(request: Dict[str, Any], http_request: Request):
     if tool_name in mcp_tool_names:
         result = await wealth_mcp.call_tool(tool_name, arguments, {})
         result["backend"] = "Internal MCP"
-        result["security"] = "Okta XAA"
+        result["security"] = "Okta XAA (MCP Auth Server)"
     elif tool_name in cal_tool_names:
         result = await calendar_tools.call_tool(tool_name, arguments, None)
         result["backend"] = "Google Calendar"
-        result["security"] = "Auth0 Token Vault"
+        result["security"] = "Okta XAA (Google Auth Server) → Auth0 Token Vault"
     else:
         result = {"error": "unknown_tool", "message": f"Tool '{tool_name}' not found"}
     
@@ -329,8 +386,23 @@ async def security_status():
         "okta_xaa": {
             "configured": xaa_manager.is_configured(),
             "domain": os.getenv("OKTA_DOMAIN", "not set"),
-            "auth_server": os.getenv("OKTA_MCP_AUTH_SERVER_ID", "not set"),
-            "description": "ID-JAG token exchange for Internal MCP access"
+            "auth_servers": {
+                "mcp": {
+                    "id": xaa_manager.AUTH_SERVER_IDS.get("mcp"),
+                    "audience": xaa_manager.AUDIENCES.get("mcp"),
+                    "description": "Internal MCP tools"
+                },
+                "google": {
+                    "id": xaa_manager.AUTH_SERVER_IDS.get("google"),
+                    "audience": xaa_manager.AUDIENCES.get("google"),
+                    "description": "Google Calendar via Token Vault"
+                },
+                "salesforce": {
+                    "id": xaa_manager.AUTH_SERVER_IDS.get("salesforce"),
+                    "audience": xaa_manager.AUDIENCES.get("salesforce"),
+                    "description": "Salesforce CRM via Token Vault"
+                }
+            }
         },
         "auth0_token_vault": {
             "configured": token_vault.is_configured(),
