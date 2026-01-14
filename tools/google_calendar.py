@@ -2,10 +2,9 @@
 Google Calendar Tools
 Accesses Google Calendar API via Auth0 Token Vault
 
-Version: 2.0 - Fixed cancel matching logic (2026-01-07)
-  - Require title match when title is provided (don't accept date-only matches)
-  - Increased minimum score threshold
-  - Better logging for debugging
+Version: 2.1 - PST Timezone Fix (2026-01-13)
+  - v2.0: Fixed cancel matching logic (2026-01-07)
+  - v2.1: Fixed timezone - use PST for "today" calculations, not UTC
 """
 
 import re
@@ -14,6 +13,7 @@ import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta, timezone
 import requests
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -235,14 +235,28 @@ class GoogleCalendarTools:
         # If we have a real token, call Google API
         if google_token:
             try:
-                # Use UTC for API calls, let Google handle timezone conversion
-                now_utc = datetime.now(timezone.utc)
-                # Set timeMax to END of the target day (23:59:59) to include all events on that day
-                time_max_utc = now_utc + timedelta(days=days_ahead)
-                time_max_utc = time_max_utc.replace(hour=23, minute=59, second=59)
+                # ============================================================
+                # FIX: Use PST timezone for "today" calculations
+                # Previously used UTC which caused "today" to show tomorrow's events
+                # ============================================================
+                pst = pytz.timezone(DEFAULT_TIMEZONE)
+                now_pst = datetime.now(pst)
+                
+                # Start from beginning of today in PST (not "now")
+                today_start_pst = now_pst.replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                # End at end of target day in PST
+                end_day_pst = now_pst + timedelta(days=days_ahead)
+                end_day_pst = end_day_pst.replace(hour=23, minute=59, second=59, microsecond=0)
+                
+                # Convert to UTC for Google API
+                time_min_utc = today_start_pst.astimezone(timezone.utc)
+                time_max_utc = end_day_pst.astimezone(timezone.utc)
                 
                 logger.info(f"[Google Calendar] Calling events.list API (next {days_ahead} days)")
-                logger.info(f"[Google Calendar] timeMin: {now_utc.isoformat()}, timeMax: {time_max_utc.isoformat()}")
+                logger.info(f"[Google Calendar] Local time ({DEFAULT_TIMEZONE}): {now_pst.strftime('%Y-%m-%d %H:%M:%S')}")
+                logger.info(f"[Google Calendar] Query range: {today_start_pst.strftime('%Y-%m-%d %H:%M')} to {end_day_pst.strftime('%Y-%m-%d %H:%M')} ({DEFAULT_TIMEZONE})")
+                logger.info(f"[Google Calendar] UTC range: {time_min_utc.isoformat()} to {time_max_utc.isoformat()}")
                 
                 result = await self._call_google_api(
                     "GET",
@@ -252,7 +266,7 @@ class GoogleCalendarTools:
                         "maxResults": 50,
                         "orderBy": "startTime",
                         "singleEvents": True,
-                        "timeMin": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "timeMin": time_min_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "timeMax": time_max_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "timeZone": DEFAULT_TIMEZONE
                     }
@@ -304,6 +318,7 @@ class GoogleCalendarTools:
                     "count": len(events),
                     "days_ahead": days_ahead,
                     "timezone": DEFAULT_TIMEZONE,
+                    "local_date": now_pst.strftime("%Y-%m-%d"),
                     "source": "Google Calendar (via Auth0 Token Vault)"
                 }
             except Exception as e:
