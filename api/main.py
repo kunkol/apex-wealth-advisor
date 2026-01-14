@@ -44,6 +44,54 @@ logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+# ============================================================================
+# SCOPE DETECTION - Determine read vs write operations
+# ============================================================================
+
+# Keywords that indicate write operations
+WRITE_KEYWORDS = [
+    # Calendar write operations
+    "schedule", "create", "book", "set up", "arrange", "plan", "add",
+    "cancel", "delete", "remove", "reschedule", "move", "change",
+    # Payment/transaction operations  
+    "pay", "transfer", "send", "process", "execute", "wire",
+    # Update operations
+    "update", "modify", "edit", "change", "set", "assign",
+    # Salesforce write operations
+    "log", "record", "note", "task", "follow-up", "followup"
+]
+
+# Tool names that are write operations
+WRITE_TOOLS = {
+    # Calendar
+    "create_calendar_event", "cancel_calendar_event", "update_calendar_event",
+    # MCP
+    "process_payment", "update_client", "create_transaction",
+    # Salesforce
+    "create_salesforce_task", "create_salesforce_note", "update_opportunity_stage",
+    "update_contact", "create_opportunity"
+}
+
+def detect_required_scope(query: str) -> str:
+    """
+    Analyze user query to determine if write operations might be needed.
+    Returns 'mcp:write' for write operations, 'mcp:read' for read operations.
+    
+    This implements least-privilege access - only request write permissions
+    when the query indicates a write operation is intended.
+    """
+    query_lower = query.lower()
+    
+    # Check for write keywords
+    for keyword in WRITE_KEYWORDS:
+        if keyword in query_lower:
+            logger.info(f"[SCOPE] Write operation detected (keyword: '{keyword}')")
+            return "mcp:write"
+    
+    # Default to read-only
+    logger.info(f"[SCOPE] Read operation detected (default)")
+    return "mcp:read"
+
 app = FastAPI(
     title="Apex Wealth Advisor API",
     description="AI-powered wealth advisory platform with Okta XAA and Auth0 Token Vault",
@@ -207,21 +255,26 @@ async def chat(request: ChatRequest, http_request: Request):
         google_xaa_info = None
         salesforce_xaa_info = None
         
+        # Detect required scope based on user's query
+        last_message = request.messages[-1].content if request.messages else ""
+        required_scope = detect_required_scope(last_message)
+        logger.info(f"[CHAT] Detected scope: {required_scope}")
+        
         if id_token and xaa_manager.is_configured():
             # MCP Auth Server token (for internal portfolio tools)
-            mcp_token_info = await xaa_manager.exchange_id_to_mcp_token(id_token)
+            mcp_token_info = await xaa_manager.exchange_id_to_mcp_token(id_token, scope=required_scope)
             if mcp_token_info:
-                logger.info(f"[CHAT] XAA-MCP: Token obtained (aud: {mcp_token_info.get('audience')})")
+                logger.info(f"[CHAT] XAA-MCP: Token obtained (aud: {mcp_token_info.get('audience')}, scope: {mcp_token_info.get('scope')})")
             
             # Google Auth Server token (for calendar via Token Vault)
-            google_xaa_info = await xaa_manager.exchange_id_to_google_token(id_token)
+            google_xaa_info = await xaa_manager.exchange_id_to_google_token(id_token, scope=required_scope)
             if google_xaa_info:
-                logger.info(f"[CHAT] XAA-Google: Token obtained (aud: {google_xaa_info.get('audience')})")
+                logger.info(f"[CHAT] XAA-Google: Token obtained (aud: {google_xaa_info.get('audience')}, scope: {google_xaa_info.get('scope')})")
             
             # Salesforce Auth Server token (for CRM via Token Vault)
-            salesforce_xaa_info = await xaa_manager.exchange_id_to_salesforce_token(id_token)
+            salesforce_xaa_info = await xaa_manager.exchange_id_to_salesforce_token(id_token, scope=required_scope)
             if salesforce_xaa_info:
-                logger.info(f"[CHAT] XAA-Salesforce: Token obtained (aud: {salesforce_xaa_info.get('audience')})")
+                logger.info(f"[CHAT] XAA-Salesforce: Token obtained (aud: {salesforce_xaa_info.get('audience')}, scope: {salesforce_xaa_info.get('scope')})")
         
         # ================================================================
         # STEP 3: Auth0 Token Vault - Get external tokens
@@ -255,8 +308,6 @@ async def chat(request: ChatRequest, http_request: Request):
         # ================================================================
         # STEP 4: Process through Claude with tools
         # ================================================================
-        last_message = request.messages[-1].content if request.messages else ""
-        
         response = await claude_service.process_message(
             message=last_message,
             conversation_history=[m.dict() for m in request.messages[:-1]],

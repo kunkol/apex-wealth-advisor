@@ -222,12 +222,16 @@ class OktaCrossAppAccessManager:
             logger.error(f"[XAA-{service_name}] Token exchange failed: {e}", exc_info=True)
             return None
     
-    async def exchange_id_to_mcp_token(self, id_token: str) -> Optional[Dict[str, Any]]:
+    async def exchange_id_to_mcp_token(self, id_token: str, scope: str = "mcp:read") -> Optional[Dict[str, Any]]:
         """
         Exchange user's ID token for MCP access token.
         Uses MCP Auth Server (aust6u013gCoEB6sz1d7) with audience 'apex-wealth-mcp'.
         
         Steps 1-3 of ID-JAG flow for internal MCP tools.
+        
+        Args:
+            id_token: User's Okta ID token
+            scope: Requested scope - 'mcp:read' for read ops, 'mcp:write' for write ops
         """
         return await self._exchange_id_to_auth_server_token(
             id_token=id_token,
@@ -235,17 +239,19 @@ class OktaCrossAppAccessManager:
             audience=self.AUDIENCES["mcp"],
             sdk_instance=self.sdk_mcp,
             service_name="MCP",
-            scope="mcp:read"
+            scope=scope
         )
     
-    async def exchange_id_to_google_token(self, id_token: str) -> Optional[Dict[str, Any]]:
+    async def exchange_id_to_google_token(self, id_token: str, scope: str = "mcp:read") -> Optional[Dict[str, Any]]:
         """
         Exchange user's ID token for Google auth server token.
         Uses Google Auth Server (ausst9jmul5dzXzDZ1d7) with audience 'https://google.com'.
         
         This token is then exchanged via Auth0 Token Vault for actual Google OAuth token.
         
-        Scope: mcp:read (as configured in Okta Google Workspace Auth Server)
+        Args:
+            id_token: User's Okta ID token
+            scope: Requested scope - 'mcp:read' for read ops, 'mcp:write' for write ops
         """
         return await self._exchange_id_to_auth_server_token(
             id_token=id_token,
@@ -253,17 +259,19 @@ class OktaCrossAppAccessManager:
             audience=self.AUDIENCES["google"],
             sdk_instance=self.sdk_google,
             service_name="Google",
-            scope="mcp:read"  # Must match scope defined in Okta Auth Server
+            scope=scope
         )
     
-    async def exchange_id_to_salesforce_token(self, id_token: str) -> Optional[Dict[str, Any]]:
+    async def exchange_id_to_salesforce_token(self, id_token: str, scope: str = "mcp:read") -> Optional[Dict[str, Any]]:
         """
         Exchange user's ID token for Salesforce auth server token.
         Uses Salesforce Auth Server (aust9a53uybbE8WG41d7) with audience 'https://salesforce.com'.
         
         This token is then exchanged via Auth0 Token Vault for actual Salesforce OAuth token.
         
-        Scope: mcp:read (as configured in Okta Salesforce Auth Server)
+        Args:
+            id_token: User's Okta ID token
+            scope: Requested scope - 'mcp:read' for read ops, 'mcp:write' for write ops
         """
         return await self._exchange_id_to_auth_server_token(
             id_token=id_token,
@@ -271,7 +279,7 @@ class OktaCrossAppAccessManager:
             audience=self.AUDIENCES["salesforce"],
             sdk_instance=self.sdk_salesforce,
             service_name="Salesforce",
-            scope="mcp:read"  # Must match scope defined in Okta Auth Server
+            scope=scope
         )
     
     async def verify_mcp_token(self, access_token: str) -> Optional[Dict[str, Any]]:
