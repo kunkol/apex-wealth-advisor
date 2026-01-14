@@ -787,36 +787,6 @@ export default function SecurityFlowTab({
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Active Security Flow Indicator */}
-            {toolsCalled.length > 0 && (
-              <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-yellow-400">⚡</span>
-                  <span className="text-sm font-medium text-white">Active Security Flow</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {/* MCP/XAA Flow */}
-                  {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
-                    <span className="px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      ✓ Okta XAA → MCP Server
-                    </span>
-                  )}
-                  {/* Google/Token Vault Flow */}
-                  {usedCalendar && (
-                    <span className="px-2 py-1 text-xs rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      ✓ XAA (Google AS) → Token Vault → Calendar
-                    </span>
-                  )}
-                  {/* Salesforce/Token Vault Flow */}
-                  {usedSalesforce && (
-                    <span className="px-2 py-1 text-xs rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                      ✓ XAA (Salesforce AS) → Token Vault → CRM
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Step 1: Okta ID Token */}
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -1022,41 +992,27 @@ export default function SecurityFlowTab({
                     </div>
                   </div>
                 )}
-                {/* Audience info - Read from actual token/API response */}
+                {/* Audience info - Show ALL audiences based on tools called */}
                 {xaaInfo?.mcp_token && (
                   <div className="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
                     <div className="flex items-start gap-2 text-[10px]">
                       <span className="text-slate-500 pt-0.5">Audience:</span>
                       <div className="flex flex-wrap gap-1">
-                        {/* MCP audience - show when MCP tools used or from API */}
-                        {(toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) || 
-                          xaaInfo?.mcp?.token_obtained) && (
-                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">
-                            {xaaInfo?.mcp?.audience || 'apex-wealth-mcp'}
-                          </span>
+                        {/* MCP audience - if any MCP tools were used */}
+                        {toolsCalled.some(t => !CALENDAR_TOOLS.includes(t) && !SALESFORCE_TOOLS.includes(t)) && (
+                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">apex-wealth-mcp</span>
                         )}
-                        {/* Google audience - from API response */}
-                        {(usedCalendar || xaaInfo?.google?.token_obtained) && xaaInfo?.google?.audience && (
-                          <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded font-mono">
-                            {xaaInfo.google.audience}
-                          </span>
+                        {/* Salesforce audience */}
+                        {usedSalesforce && (
+                          <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded font-mono">https://salesforce.com</span>
                         )}
-                        {/* Salesforce audience - from API response */}
-                        {(usedSalesforce || xaaInfo?.salesforce?.token_obtained) && xaaInfo?.salesforce?.audience && (
-                          <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 rounded font-mono">
-                            {xaaInfo.salesforce.audience}
-                          </span>
+                        {/* Google audience */}
+                        {usedCalendar && (
+                          <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded font-mono">https://google.com</span>
                         )}
-                        {/* Fallback: decode from token if no structured data */}
-                        {toolsCalled.length === 0 && !xaaInfo?.mcp?.audience && !xaaInfo?.google?.audience && !xaaInfo?.salesforce?.audience && (
-                          (() => {
-                            try {
-                              const decoded = JSON.parse(atob(xaaInfo.mcp_token.split('.')[1]));
-                              return <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-mono">{decoded.aud}</span>;
-                            } catch {
-                              return <span className="text-slate-400">Varies by target resource</span>;
-                            }
-                          })()
+                        {/* Fallback if no tools called */}
+                        {toolsCalled.length === 0 && (
+                          <span className="text-slate-400">Varies by target resource</span>
                         )}
                       </div>
                     </div>
@@ -1064,13 +1020,6 @@ export default function SecurityFlowTab({
                       <span className="text-slate-500">Grant:</span>
                       <span className="text-slate-300">JWT Bearer (urn:ietf:params:oauth:grant-type:jwt-bearer)</span>
                     </div>
-                    {/* Show scope if available */}
-                    {xaaInfo?.scope && (
-                      <div className="flex items-center gap-2 text-[10px] mt-1">
-                        <span className="text-slate-500">Scope:</span>
-                        <span className="text-green-400 font-mono">{xaaInfo.scope}</span>
-                      </div>
-                    )}
                   </div>
                 )}
               </TokenCard>
