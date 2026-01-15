@@ -95,19 +95,13 @@ class ClaudeService:
     - Salesforce tools: Auth0 Token Vault (Phase 2)
     """
     
-    
     def __init__(self):
         api_key = os.getenv("ANTHROPIC_API_KEY")
-        base_url = os.getenv("ANTHROPIC_BASE_URL")  # LiteLLM proxy support
         if not api_key:
             logger.warning("ANTHROPIC_API_KEY not set")
             self.client = None
         else:
-            if base_url:
-                logger.info(f"[Claude] Using proxy at {base_url}")
-                self.client = anthropic.Anthropic(api_key=api_key, base_url=base_url)
-            else:
-                self.client = anthropic.Anthropic(api_key=api_key)
+            self.client = anthropic.Anthropic(api_key=api_key)
         
         self.model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
         
