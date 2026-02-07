@@ -1,0 +1,42 @@
+{
+  "name": "sdfc-sync-demo",
+  "version": "1.0.0",
+  "description": "Salesforce to OpenFGA authorization sync demo CLI",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "sdfc-sync-demo": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules E2E_TEST=true jest --testPathPattern=tests/e2e",
+    "sync": "node dist/cli.js sync"
+  },
+  "dependencies": {
+    "@openfga/sdk": "^0.8.0",
+    "axios": "^1.7.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "dotenv": "^17.2.4",
+    "ora": "^5.4.1",
+    "winston": "^3.17.0",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@openfga/syntax-transformer": "^0.2.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

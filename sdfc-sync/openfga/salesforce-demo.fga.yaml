@@ -1,0 +1,170 @@
+model_file: ./salesforce-demo.fga
+name: Salesforce Authorization Model Tests
+
+tuples:
+  # Organization setup
+  - user: user:admin1
+    relation: admin
+    object: organization:org1
+
+  - user: user:user1
+    relation: member
+    object: organization:org1
+
+  - user: user:user2
+    relation: member
+    object: organization:org1
+
+  # Role hierarchy: CEO is parent of VP Sales, VP Sales is parent of Sales Rep
+  # Tuple (X, parent, Y) means "X is the parent of Y"
+  - user: role:ceo
+    relation: parent
+    object: role:vp_sales
+
+  - user: role:vp_sales
+    relation: parent
+    object: role:sales_rep
+
+  - user: user:ceo_user
+    relation: assignee
+    object: role:ceo
+
+  - user: user:vp_user
+    relation: assignee
+    object: role:vp_sales
+
+  - user: user:rep_user
+    relation: assignee
+    object: role:sales_rep
+
+  # Group membership
+  - user: user:user1
+    relation: member
+    object: group:sales_team
+
+  - user: user:user2
+    relation: member
+    object: group:sales_team
+
+  # Account owned by rep_user with role-based access
+  - user: organization:org1
+    relation: organization
+    object: account:acct1
+
+  - user: user:rep_user
+    relation: owner
+    object: account:acct1
+
+  - user: role:sales_rep
+    relation: owner_role
+    object: account:acct1
+
+  # Account shared with group (owned by user1)
+  - user: organization:org1
+    relation: organization
+    object: account:acct2
+
+  - user: user:user1
+    relation: owner
+    object: account:acct2
+
+  - user: group:sales_team#member
+    relation: viewer
+    object: account:acct2
+
+  # Industry restriction setup
+  - user: industry:government
+    relation: industry
+    object: account:one_gov_account
+
+  - user: organization:org1
+    relation: organization
+    object: account:one_gov_account
+
+  - user: user:rep_user
+    relation: owner
+    object: account:one_gov_account
+
+  - user: user:*
+    relation: restricted
+    object: industry:government
+
+tests:
+  - name: Owner can view their account
+    check:
+      - user: user:rep_user
+        object: account:acct1
+        assertions:
+          can_view: true
+          can_edit: true
+          can_delete: true
+
+  - name: Role hierarchy - manager can view subordinate record via owner_role
+    check:
+      - user: user:vp_user
+        object: account:acct1
+        assertions:
+          can_view: true
+
+      - user: user:ceo_user
+        object: account:acct1
+        assertions:
+          can_view: true
+
+  - name: Subordinate cannot view record they dont own
+    check:
+      - user: user:rep_user
+        object: account:acct2
+        assertions:
+          can_view: false
+
+  - name: Group member can view shared account
+    check:
+      - user: user:user1
+        object: account:acct2
+        assertions:
+          can_view: true
+
+      - user: user:user2
+        object: account:acct2
+        assertions:
+          can_view: true
+
+  - name: Non-group member cannot view shared account
+    check:
+      - user: user:rep_user
+        object: account:acct2
+        assertions:
+          can_view: false
+
+  - name: Org admin can view any account
+    check:
+      - user: user:admin1
+        object: account:acct1
+        assertions:
+          can_view: true
+          can_edit: true
+          can_delete: true
+
+      - user: user:admin1
+        object: account:acct2
+        assertions:
+          can_view: true
+          can_edit: true
+          can_delete: true
+
+  - name: Industry restriction blocks access for restricted user
+    check:
+      - user: user:*
+        object: account:one_gov_account
+        assertions:
+          can_view: false
+          can_edit: false
+
+  - name: Owner without restriction can access restricted industry account
+    check:
+      - user: user:rep_user
+        object: account:one_gov_account
+        assertions:
+          can_view: false
+          can_edit: false
