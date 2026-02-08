@@ -87,36 +87,87 @@ node dist/cli.js sync
 node dist/cli.js sync --full
 ```
 
-## Boostraping a project that uses this model/sync
+## Configuring a Salesforce Connected App
 
-- Create a store with the demo authorization model:
+1. Go to **Setup** (top-right gear icon).
+2. Search for **External Client Apps** and click **External Client App Manager**.
+3. Click **New External Client App**.
+4. Under **OAuth Settings**, click **Enable OAuth**.
+5. Enter `http://localhost:8080/callback` as the callback URL (not used, but required).
+6. In **Selected OAuth Scopes**, add:
+   - "Manage user data via APIs (api)"
+   - "Full access (full)"
+7. Check **Enable Client Credentials Flow** and click **Create**.
+8. Under **Policies**, click **Edit** and confirm **Enable Client Credentials Flow** is enabled.
+9. Select an admin user for **Run As**.
+10. Go to **Settings > OAuth Settings** and retrieve the **Consumer Key and Secret** (Salesforce may send an OTP to your email).
+11. Copy the values into your `.env` file:
 
 ```bash
- fga store create --model openfga/salesforce-demo.fga
- {
+SALESFORCE_CLIENT_ID=<consumer_key>
+SALESFORCE_CLIENT_SECRET=<consumer_secret>
+SALESFORCE_INSTANCE_URL=https://orgfarm-2771b5c595-dev-ed.develop.my.salesforce.com
+```
+
+> `SALESFORCE_INSTANCE_URL` is the base URL of your Salesforce org (visible in the browser address bar).
+
+12. Verify authentication:
+
+```bash
+node dist/cli.js auth login
+```
+
+Expected output:
+
+```
+Authenticating with Client Credentials flow...
+Successfully authenticated!
+Instance: https://orgfarm-2771b5c595-dev-ed.develop.my.salesforce.com
+Token expires: 2026-02-07T22:24:05.304Z
+Organization ID: 00Dfj00000FGhGiEAL
+```
+
+## Bootstrapping a Project With This Model
+
+1. Create a store with the demo authorization model:
+
+```bash
+fga store create --model openfga/salesforce-demo.fga
+```
+
+Example output:
+
+```json
+{
   "store": {
-    "created_at":"2026-02-07T17:59:40.052653Z",
-    "id":"01KGWM4TRMMR82D1DA5TPR0CYX",
-    "name":"salesforce-demo",
-    "updated_at":"2026-02-07T17:59:40.052653Z"
+    "created_at": "2026-02-07T17:59:40.052653Z",
+    "id": "01KGWM4TRMMR82D1DA5TPR0CYX",
+    "name": "salesforce-demo",
+    "updated_at": "2026-02-07T17:59:40.052653Z"
   },
   "model": {
-    "authorization_model_id":"01KGWM4TRWH9TRXXAXN4BVFND7"
+    "authorization_model_id": "01KGWM4TRWH9TRXXAXN4BVFND7"
   }
+}
 ```
 
-- Restrict access to Government accounts:
+2. Restrict access to Government accounts:
 
+```bash
+fga tuple write "user:*" restricted industry:government --store-id <store_id>
 ```
-fga tuple write "user:*" restricted industry:government   --store-id <store_id>
+
+Example output:
+
+```json
 {
   "successful": [
-  {
-    "object":"industry:government",
-    "relation":"restricted",
-    "user":"user:*"
-  }
-]
+    {
+      "object": "industry:government",
+      "relation": "restricted",
+      "user": "user:*"
+    }
+  ]
 }
 ```
 
