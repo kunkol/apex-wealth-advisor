@@ -69,7 +69,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   const config = loadConfig(options.configPath);
 
   if (!isAuthenticated(config) || isTokenExpired(config)) {
-    throw new Error('Not authenticated. Run "sdfc-sync-demo auth login" first.');
+    throw new Error('Not authenticated. Run "cli.js auth login" first.');
   }
 
   if (!config.openfga?.apiUrl || !config.openfga?.storeId) {

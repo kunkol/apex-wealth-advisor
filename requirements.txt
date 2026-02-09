@@ -12,6 +12,9 @@ httpx>=0.24.0
 # AI
 anthropic>=0.18.0
 
+# FGA
+openfga-sdk>=0.9.0
+
 # Okta XAA SDK (for ID-JAG token exchange)
 # Install from TestPyPI:
 # pip install --extra-index-url https://test.pypi.org/simple/ okta-ai-sdk-proto>=1.0.0a6

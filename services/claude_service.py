@@ -361,7 +361,8 @@ When security controls block an action, explain why clearly and suggest alternat
                                 result = await salesforce_tools.call_tool(
                                     tool_name,
                                     tool_input,
-                                    salesforce_token
+                                    salesforce_token,
+                                    user_info=user_info
                                 )
                                 result["security_flow"] = "Auth0 Token Vault"
                             else:
