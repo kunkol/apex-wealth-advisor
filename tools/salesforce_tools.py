@@ -10,7 +10,8 @@ All operations verified working in notebook:
 import logging
 import httpx
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+
+from tools.openfga_tools import is_fga_enabled, check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +321,8 @@ async def create_task(
     contact_name: str,
     due_date: Optional[str] = None,
     description: Optional[str] = None,
-    priority: str = "Normal"
+    priority: str = "Normal",
+    user_info: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Create a follow-up task
@@ -345,6 +347,20 @@ async def create_task(
                 return {"success": False, "error": f"No contact found matching '{contact_name}'"}
             
             contact_id = contacts[0]["Id"]
+            authorization = None
+
+            # If OpenFGA is enabled, enforce contact edit permission before task creation.
+            if is_fga_enabled():
+                authorization = await check_permission("contact", contact_id, "can_edit", user_info)
+                if not authorization.get("allowed"):
+                    return {
+                        "success": False,
+                        "error": authorization.get(
+                            "error",
+                            f"Permission denied: current user cannot edit contact '{contacts[0]['Name']}'"
+                        ),
+                        "authorization": authorization,
+                    }
             
             # Create the task
             task_data = {
@@ -373,7 +389,8 @@ async def create_task(
                 return {
                     "success": True,
                     "task_id": result.get("id"),
-                    "message": f"Task '{subject}' created for {contacts[0]['Name']}"
+                    "message": f"Task '{subject}' created for {contacts[0]['Name']}",
+                    "authorization": authorization,
                 }
             else:
                 return {"success": False, "error": f"Task creation failed: {create_response.status_code}"}
@@ -737,7 +754,13 @@ class SalesforceTools:
         """Return list of available Salesforce tools"""
         return self.tools
     
-    async def call_tool(self, tool_name: str, args: Dict[str, Any], access_token: str = None) -> Dict[str, Any]:
+    async def call_tool(
+        self,
+        tool_name: str,
+        args: Dict[str, Any],
+        access_token: str = None,
+        user_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Execute a Salesforce tool"""
         
         if not access_token:
@@ -764,7 +787,8 @@ class SalesforceTools:
                 args.get("contact_name", ""),
                 args.get("due_date"),
                 args.get("description"),
-                args.get("priority", "Normal")
+                args.get("priority", "Normal"),
+                user_info=user_info
             ),
             "create_salesforce_note": lambda: create_note(
                 access_token,

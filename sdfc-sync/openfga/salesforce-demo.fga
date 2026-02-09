@@ -1,0 +1,76 @@
+model
+  schema 1.1
+
+# Organization - root of the hierarchy
+type organization
+  relations
+    define admin: [user]
+    define member: [user] or admin
+    define can_view: admin
+    define can_edit: admin
+    define can_delete: admin
+
+# User type
+type user
+
+# Role in the hierarchy
+type role
+  relations
+    define parent: [role]
+    define assignee: [user]
+    define member: assignee or member from parent
+
+# Group (public groups)
+type group
+  relations
+    define member: [user, group#member, role#member]
+
+# Permission Set
+type permission_set
+  relations
+    define assignee: [user]
+
+# Industry - for industry-based restrictions
+type industry
+  relations
+    define restricted: [user:*]
+
+# Account record
+type account
+  relations
+    define organization: [organization]
+    define owner: [user]
+    define owner_role: [role]
+    define industry: [industry]
+    define viewer: [user, group#member] or owner or member from owner_role or can_view from organization
+    define editor: [user, group#member] or owner or can_edit from organization
+    define deleter: owner or can_delete from organization
+    define can_view: viewer but not restricted from industry
+    define can_edit: editor but not restricted from industry
+    define can_delete: deleter but not restricted from industry
+
+# Contact record
+type contact
+  relations
+    define organization: [organization]
+    define owner: [user]
+    define parent_account: [account]
+    define viewer: [user, group#member] or owner or can_view from parent_account or can_view from organization
+    define editor: [user, group#member] or owner or can_edit from parent_account or can_edit from organization
+    define deleter: owner or can_delete from organization
+    define can_view: viewer
+    define can_edit: editor
+    define can_delete: deleter
+
+# Task record
+type task
+  relations
+    define organization: [organization]
+    define owner: [user]
+    define parent_record: [account, contact]
+    define viewer: owner or can_view from parent_record or can_view from organization
+    define editor: owner or can_edit from parent_record or can_edit from organization
+    define deleter: owner or can_delete from organization
+    define can_view: viewer
+    define can_edit: editor
+    define can_delete: deleter
